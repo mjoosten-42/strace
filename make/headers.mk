@@ -1,0 +1,2 @@
+HEADERS := \
+	inc/strace.h \
