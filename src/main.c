@@ -20,7 +20,8 @@ int main(int argc, char **argv, char **envp) {
 			perror("fork");
 			return EXIT_FAILURE;
 		case 0:
-			ptrace_wrap(PTRACE_TRACEME);
+			ptrace_wrap(PTRACE_TRACEME, 0, NULL, NULL);
+			kill(getpid(), SIGSTOP);
 			execve(argv[1], argv + 1, envp);
 			perror("execve");
 			return EXIT_FAILURE;
