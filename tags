@@ -9,7 +9,8 @@
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
 !_TAG_PROGRAM_VERSION	5.9.0	//
+get_syscall_info	src/syscall.c	/^const syscall_info *get_syscall_info(int nr) {$/;"	f	typeref:typename:const syscall_info *
 main	src/main.c	/^int main(int argc, char **argv, char **envp) {$/;"	f	typeref:typename:int
-ptrace_wrap	src/trace.c	/^long ptrace_wrap(int op, ...) {$/;"	f	typeref:typename:long
+ptrace_wrap	src/trace.c	/^long ptrace_wrap(int op, pid_t pid, void *addr, void *data) {$/;"	f	typeref:typename:long
 trace	src/trace.c	/^void trace(pid_t pid) {$/;"	f	typeref:typename:void
 waitpid_wrap	src/trace.c	/^void waitpid_wrap(pid_t pid, int *status) {$/;"	f	typeref:typename:void

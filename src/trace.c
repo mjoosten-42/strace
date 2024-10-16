@@ -1,4 +1,5 @@
 #include "strace.h"
+#include "syscall.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ void trace(pid_t pid) {
 
 		if (WIFEXITED(status)) {
 			if (syscall_started) {
-				fprintf(stderr, "0\n");
+				fprintf(stderr, "?\n");
 			}
 
 			fprintf(stderr, "+++ exited with %i +++\n", WEXITSTATUS(status));
@@ -30,8 +31,21 @@ void trace(pid_t pid) {
 
 		ptrace_wrap(PTRACE_GET_SYSCALL_INFO, pid, (void *)sizeof(info), &info);
 
+		const syscall_info *sys_info = get_syscall_info(info.entry.nr);
+
 		if (info.op == PTRACE_SYSCALL_INFO_ENTRY) {
-			fprintf(stderr, "%s = ", syscall_name(info.entry.nr));
+			fprintf(stderr, "%s(", sys_info->name);
+			
+			for (int i = 0; i < sys_info->argc; i++) {
+				fprintf(stderr, sys_info->args[i].format, info.entry.args[i]);
+				
+				if (i < sys_info->argc - 1) {
+					fprintf(stderr, ", ");
+				}
+			}
+
+			fprintf(stderr, ") = ");
+
 			syscall_started = 1;
 		}
 
