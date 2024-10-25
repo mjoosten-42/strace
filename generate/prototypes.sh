@@ -11,6 +11,10 @@ while read -r line; do
 	if [[ $number =~ ^[0-9]+$ ]] ; then
 		name=$(echo "$line" | cut -d ' ' -f2 | cut -d '_' -f4-)
 
+		if [[ ! -z $1 ]]; then
+			name="$1"
+		fi
+
 		if ! man 2 $name > /dev/null 2>&1; then
 			continue
 		fi
@@ -20,8 +24,16 @@ while read -r line; do
 
 		s1="$(echo "$synopsis" | grep "$name(" -A 1 -m 1)"
 		s2="$(echo "$s1" | tr -d '\n' | xargs | sed 's/; /;\n/g')"
-		
-		IFS=$'\n'; array=( $(echo "$s2") )
+		s3="$(echo "$s2" | grep "[\* ]$name(")"
+	
+		if [[ $2 == debug ]]; then
+			echo -e "synopsis: [\n$synopsis\n]"
+			echo -e "s1      : [\n$s1\n]"
+			echo -e "s2      : [\n$s2\n]"
+			echo -e "s3      : [\n$s3\n]"
+		fi
+
+		IFS=$'\n'; array=( $(echo "$s3") )
 
 		prototype=""
 		max_length=0
@@ -44,6 +56,10 @@ while read -r line; do
 
 		headers+="$includes"
 		headers+=$'\n'
+
+		if [[ $2 == debug ]]; then
+			break;
+		fi
 	fi
 
 done < "$systemheader"

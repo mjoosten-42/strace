@@ -34,8 +34,6 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <syscall.h>
 #include <sys/capability.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
@@ -43,8 +41,8 @@
 #include <sys/file.h>
 #include <sys/fsuid.h>
 #include <sys/inotify.h>
-#include <sys/ioctl.h>
 #include <sys/io.h>
+#include <sys/ioctl.h>
 #include <sys/ipc.h>
 #include <sys/klog.h>
 #include <sys/mman.h>
@@ -76,6 +74,7 @@
 #include <sys/vfs.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
+#include <syscall.h>
 #include <time.h>
 #include <unistd.h>
 #include <ustat.h>
@@ -87,7 +86,7 @@ ssize_t write(int fd, const void *buf, size_t count);
 int open(const char *pathname, int flags, mode_t mode);
 int close(int fd);
 int stat(const char *pathname, struct stat *statbuf);
-int lstat(const char *pathname, struct stat *statbuf);
+int fstat(int fd, struct stat *statbuf);
 int lstat(const char *pathname, struct stat *statbuf);
 int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 off_t lseek(int fd, off_t offset, int whence);
@@ -110,14 +109,14 @@ int madvise(void *addr, size_t length, int advice);
 int shmget(key_t key, size_t size, int shmflg);
 void *shmat(int shmid, const void *shmaddr, int shmflg);
 int shmctl(int shmid, int cmd, struct shmid_ds *buf);
-int dup2(int oldfd, int newfd);
+int dup(int oldfd);
 int dup2(int oldfd, int newfd);
 int pause(void);
 int nanosleep(const struct timespec *req, struct timespec *rem);
-int setitimer(int which, const struct itimerval *new_value,
+int getitimer(int which, struct itimerval *curr_value);
 unsigned int alarm(unsigned int seconds);
 int setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value);
-pid_t getppid(void);
+pid_t getpid(void);
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
 int socket(int domain, int type, int protocol);
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
@@ -138,7 +137,6 @@ int clone(int (*fn)(void *), void *stack, int flags, void *arg, ... /* pid_t *pa
 pid_t fork(void);
 pid_t vfork(void);
 int execve(const char *pathname, char *const argv[], char *const envp[]);
-void _exit(int status);
 pid_t wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage);
 int kill(pid_t pid, int sig);
 int uname(struct utsname *buf);
@@ -171,18 +169,18 @@ ssize_t readlink(const char *pathname, char *buf, size_t bufsiz);
 int chmod(const char *pathname, mode_t mode);
 int fchmod(int fd, mode_t mode);
 int chown(const char *pathname, uid_t owner, gid_t group);
-int lchown(const char *pathname, uid_t owner, gid_t group);
+int fchown(int fd, uid_t owner, gid_t group);
 int lchown(const char *pathname, uid_t owner, gid_t group);
 mode_t umask(mode_t mask);
 int gettimeofday(struct timeval *tv, struct timezone *tz);
-int setrlimit(int resource, const struct rlimit *rlim);
+int getrlimit(int resource, struct rlimit *rlim);
 int getrusage(int who, struct rusage *usage);
 int sysinfo(struct sysinfo *info);
 clock_t times(struct tms *buf);
 long ptrace(enum __ptrace_request request, pid_t pid, void *addr, void *data);
-uid_t geteuid(void);
+uid_t getuid(void);
 int syslog(int type, char *bufp, int len);
-gid_t getegid(void);
+gid_t getgid(void);
 int setuid(uid_t uid);
 int setgid(gid_t gid);
 uid_t geteuid(void);
@@ -215,7 +213,7 @@ int ustat(dev_t dev, struct ustat *ubuf);
 int statfs(const char *path, struct statfs *buf);
 int fstatfs(int fd, struct statfs *buf);
 int sysfs(int option, const char *fsname);
-int setpriority(int which, id_t who, int prio);
+int getpriority(int which, id_t who);
 int setpriority(int which, id_t who, int prio);
 int sched_setparam(pid_t pid, const struct sched_param *param);
 int sched_getparam(pid_t pid, struct sched_param *param);
@@ -224,7 +222,7 @@ int sched_getscheduler(pid_t pid);
 int sched_get_priority_max(int policy);
 int sched_get_priority_min(int policy);
 int sched_rr_get_interval(pid_t pid, struct timespec *tp);
-int mlock2(const void *addr, size_t len, int flags);
+int mlock(const void *addr, size_t len);
 int munlock(const void *addr, size_t len);
 int mlockall(int flags);
 int munlockall(void);
@@ -264,10 +262,10 @@ int fsetxattr(int fd, const char *name, const void *value, size_t size, int flag
 ssize_t getxattr(const char *path, const char *name, void *value, size_t size);
 ssize_t lgetxattr(const char *path, const char *name, void *value, size_t size);
 ssize_t fgetxattr(int fd, const char *name, void *value, size_t size);
-ssize_t llistxattr(const char *path, char *list, size_t size);
+ssize_t listxattr(const char *path, char *list, size_t size);
 ssize_t llistxattr(const char *path, char *list, size_t size);
 ssize_t flistxattr(int fd, char *list, size_t size);
-int lremovexattr(const char *path, const char *name);
+int removexattr(const char *path, const char *name);
 int lremovexattr(const char *path, const char *name);
 int fremovexattr(int fd, const char *name);
 int tkill(int tid, int sig);
@@ -283,7 +281,7 @@ int io_submit(aio_context_t ctx_id, long nr, struct iocb **iocbpp);
 int io_cancel(aio_context_t ctx_id, struct iocb *iocb, struct io_event *result);
 int get_thread_area(struct user_desc *u_info);
 int lookup_dcookie(u64 cookie, char *buffer, size_t len);
-int epoll_create1(int flags);
+int epoll_create(int size);
 int remap_file_pages(void *addr, size_t size, int prot, size_t pgoff, int flags);
 ssize_t getdents64(int fd, void *dirp, size_t count);
 pid_t set_tid_address(int *tidptr);
@@ -318,8 +316,8 @@ key_serial_t add_key(const char *type, const char *description, const void *payl
 key_serial_t request_key(const char *type, const char *description, const char *callout_info,
 long keyctl(int operation, ...);
 int ioprio_set(int which, int who, int ioprio);
-int ioprio_set(int which, int who, int ioprio);
-int inotify_init1(int flags);
+int ioprio_get(int which, int who);
+int inotify_init(void);
 int inotify_add_watch(int fd, const char *pathname, uint32_t mask);
 int inotify_rm_watch(int fd, int wd);
 long migrate_pages(int pid, unsigned long maxnode, const unsigned long *old_nodes,
