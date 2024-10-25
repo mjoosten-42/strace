@@ -65,7 +65,7 @@ EOF
 		fi
 
 		cat << EOF >> "$output_file"
-		{ "$type", $size },	
+		{ "$arg", "$type", $size },	
 EOF
 
     done

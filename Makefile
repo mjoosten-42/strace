@@ -67,6 +67,9 @@ scan: clean
 ctags:
 	ctags $(SOURCES)
 
+libclang:
+	clang test.c -I /usr/lib/llvm-14/include/ /usr/lib/llvm-14/lib/libclang.so 
+
 .PHONY: all test clean fclean re files print format scan ctags
 
 -include $(OBJECTS:.o=.d)

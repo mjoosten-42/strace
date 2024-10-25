@@ -2,6 +2,7 @@
 #define SYSCALL_H
 
 typedef struct s_arg {
+	char type[64];
 	char format[4];
 	int	 size;
 } arg;
