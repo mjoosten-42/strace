@@ -68,7 +68,8 @@ ctags:
 	ctags $(SOURCES)
 
 libclang:
-	clang generate/libclang.c -I /usr/lib/llvm-14/include/ /usr/lib/llvm-14/lib/libclang.so 
+#	clang generate/libclang.c -I /usr/lib/llvm-14/include/ /usr/lib/llvm-14/lib/libclang.so
+	clang generate/libclang.c -I ~/.capt/root/usr/lib/llvm-15/include/ ~/.capt/root/usr/lib/x86_64-linux-gnu/libclang-15.so.1
 
 .PHONY: all test clean fclean re files print format scan ctags
 
