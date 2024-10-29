@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file="generate/prototypes.c"
+file="generate/prototypes.h"
 systemheader="/usr/include/x86_64-linux-gnu/asm/unistd_64.h"
 headers=""
 prototypes=()
@@ -79,7 +79,7 @@ while read -r line; do
 
 		echo "$number: $prototype"
 
-		prototypes+=("/* $(printf %3s $number) */ $prototype")
+		prototypes+=("/** $(printf %3s $number) */ $prototype")
 
 		headers+="$includes"
 		headers+=$'\n'
@@ -95,6 +95,8 @@ echo >> "$file"
 for prototype in "${prototypes[@]}"; do
 	echo "$prototype" >> "$file"
 done
+
+echo >> "$file"
 
 # remove empty line at the beginning. No idea how it got there in the first place
 sed -i '/./,$!d' "$file"

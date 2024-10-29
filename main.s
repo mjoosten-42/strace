@@ -13,11 +13,13 @@ statbuf:	resb	256
 section .text
 
 _start:
-	mov 	rax, 4
-	mov		rdi, filename
-	mov		rsi, statbuf
+	mov		rax, 78
+	mov		rdi, 0
+	mov		rsi, 0
+	mov		rdx, 0
+	mov		r10, 0
 	syscall
-
+	
 	mov		rax, 60
 	mov		rdi, 1
 	syscall
