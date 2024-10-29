@@ -1,9 +1,9 @@
 #!/bin/bash
 
-file="prototypes.c"
+file="generate/prototypes.c"
 systemheader="/usr/include/x86_64-linux-gnu/asm/unistd_64.h"
 headers=""
-prototypes=""
+prototypes=()
 
 exceptions=()
 exceptions[ 13]="int rt_sigaction(int, const struct sigaction *, struct sigaction *, size_t);"
@@ -25,75 +25,58 @@ exceptions[302]="int prlimit64(pid_t pid, unsigned int resource, const struct rl
 while read -r line; do
 	number=$(echo "$line" | cut -d ' ' -f3)
 
+	if [[ ! -z $1 && $number == $1 ]]; then
+		break
+	fi
+
 	if [[ $number =~ ^[0-9]+$ ]] ; then
-		if [[ -v exceptions[$number] ]]; then
-			echo "$number: ${exceptions[$number]}"
-
-			prototypes+="${exceptions[$number]}"
-			prototypes+=$'\n'
-			continue
-		fi
-
-		name=$(echo "$line" | cut -d ' ' -f2 | cut -d '_' -f4-)
-
-		# overwrite name
-		if [[ ! -z $1 ]]; then
-			name="$1"
-		fi
-
-		if ! man 2 $name > /dev/null 2>&1; then
-			continue
-		fi
-
-		content="$(man 2 $name)"
-
-		if echo "$content" | grep -q "UNIMPLEMENTED"; then
-			echo "$number: int $name();"
-
-			prototypes+="int $name()"
-			prototypes+=$'\n'
-			continue
-		fi
-
-		synopsis="$(echo "$content" | sed -n '/^SYNOPSIS/,/^[A-Z]/p' | sed '$d')"
-		includes="$(echo "$synopsis" | grep '#include' | awk '{ $1=$1; print }'	| cut -d ' ' -f -2)"
-		
-		#s1="$(echo "$synopsis" | grep "$name(" -A 1 -m 1)"
-		#s2="$(echo "$s1" | tr -d '\n' | xargs | sed 's/; /;\n/g')"
-		#s3="$(echo "$s2" | grep "[\*_ ]$name(" | sed "s/_$name/$name/g")"
-	
-		if [[ $2 == debug ]]; then
-			echo -e "synopsis: [\n$synopsis\n]"
-			echo -e "s1      : [\n$s1\n]"
-			echo -e "s2      : [\n$s2\n]"
-			echo -e "s3      : [\n$s3\n]"
-		fi
-
-		#IFS=$'\n'; array=( $(echo "$s3") )
-		IFS=$'\n'; array=( $(echo "$synopsis" | grep "$name(" -A 1 -m 1 | tr -d	'\n' | xargs | sed 's/; /;\n/g' | grep "[\*_ ]$name(" | sed	"s/_$name/$name/g") )
-
 		prototype=""
-		len=0
-		
-		for item in "${array[@]}"; do
-			if [[ ${#item} -gt $len ]]; then
-				prototype="$item"
-				len=${#item}
+	
+		if [[ -v exceptions[$number] ]]; then
+			prototype="${exceptions[$number]}"
+		else
+			name=$(echo "$line" | cut -d ' ' -f2 | cut -d '_' -f4-)
+
+			if ! man 2 $name > /dev/null 2>&1; then
+				continue
 			fi
-		done
+
+			content="$(man 2 $name)"
+
+			if echo "$content" | grep -q "UNIMPLEMENTED"; then
+				prototype="int $name(); /* Unimplemented */"
+			else
+				synopsis="$(echo "$content" | sed -n '/^SYNOPSIS/,/^[A-Z]/p' | sed '$d')"
+				includes="$(echo "$synopsis" | grep '#include' | awk '{ $1=$1; print }'	| cut -d ' ' -f -2)"
+			
+				#s1="$(echo "$synopsis" | grep "$name(" -A 1 -m 1)"
+				#s2="$(echo "$s1" | tr -d '\n' | xargs | sed 's/; /;\n/g')"
+				#s3="$(echo "$s2" | grep "[\*_ ]$name(" | sed "s/_$name/$name/g")"
+	
+				if [[ $2 == debug ]]; then
+					echo -e "synopsis: [\n$synopsis\n]"
+					echo -e "s1      : [\n$s1\n]"
+					echo -e "s2      : [\n$s2\n]"
+					echo -e "s3      : [\n$s3\n]"
+				fi
+
+				#IFS=$'\n'; array=( $(echo "$s3") )
+				IFS=$'\n'; array=( $(echo "$synopsis" | grep "$name(" -A 1 -m 1 | tr -d	'\n' | xargs | sed 's/; /;\n/g' | grep "[\*_ ]$name(" | sed	"s/_$name/$name/g") )
+	
+				len=0
+
+				for item in "${array[@]}"; do
+					if [[ ${#item} -gt $len ]]; then
+						prototype="$item"
+						len=${#item}
+					fi
+				done
+			fi
+		fi
 
 		echo "$number: $prototype"
 
-		if [[ ! -z $1 ]]; then
-			break	
-		fi
-
-		if [[ -z "$prototype" ]]; then
-			continue
-		fi
-
-		prototypes+="$prototype"
-		prototypes+=$'\n'
+		prototypes+=("/* $(printf %3s $number) */ $prototype")
 
 		headers+="$includes"
 		headers+=$'\n'
@@ -103,9 +86,13 @@ done < "$systemheader"
 
 headers="$(echo "$headers" | sort | uniq)"
 
-> "$file"
-echo "$headers" >> "$file"
+echo "$headers" > "$file"
 echo >> "$file"
-echo "$prototypes" >> "$file"
 
+for prototype in "${prototypes[@]}"; do
+	echo "$prototype" >> "$file"
+done
+
+# remove empty line at the beginning. No idea how it got there in the first place
+sed -i '/./,$!d' "$file"
 
