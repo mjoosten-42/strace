@@ -71,6 +71,9 @@ libclang:
 #	clang generate/libclang.c -I /usr/lib/llvm-14/include/ /usr/lib/llvm-14/lib/libclang.so
 	clang generate/libclang.c -I ~/.capt/root/usr/lib/llvm-15/include/ ~/.capt/root/usr/lib/x86_64-linux-gnu/libclang-15.so.1
 
+syscall:
+	nasm -f elf64 main.s && ld main.o && strace ./a.out
+
 .PHONY: all test clean fclean re files print format scan ctags
 
 -include $(OBJECTS:.o=.d)

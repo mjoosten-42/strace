@@ -11,6 +11,7 @@ exceptions[ 14]="int rt_sigprocmask(int, const sigset_t *, sigset_t *, size_t);"
 exceptions[ 15]="int rt_sigreturn(...);"
 exceptions[ 17]="ssize_t pread64(unsigned int fd, char *buf, size_t count, loff_t pos);"
 exceptions[ 18]="ssize_t pwrite64(unsigned int fd, const char *buf, size_t count, loff_t pos);"
+exceptions[ 22]="int pipe(int pipefds[2]);"
 exceptions[127]="int rt_sigpending(sigset_t *set, size_t sigsetsize);"
 exceptions[128]="int rt_sigtimedwait(const sigset_t *uthese, siginfo_t *uinfo, const struct _kernel_timespec *uts, size_t sigsetsize);"
 exceptions[129]="int rt_sigqueueinfo(pid_t pid, int sig, siginfo_t *uinfo);"
@@ -21,12 +22,14 @@ exceptions[270]="int pselect6(int, fd_set *, fd_set *, fd_set *, struct __kernel
 exceptions[289]="int signalfd4(int ufd, sigset_t *user_mask, size_t sizemask, int flags);"
 exceptions[290]="int eventfd2(unsigned int count, int flags);"
 exceptions[302]="int prlimit64(pid_t pid, unsigned int resource, const struct rlimit64 *new_rlim, struct rlimit64 *old_rlim);"
+exceptions[310]="int process_vm_readv(pid_t pid, const struct iovec *lvec, unsigned long liovcnt, const struct iovec *rvec, unsigned long riovcnt, unsigned long flags);"
+exceptions[311]="int process_vm_writev(pid_t pid, const struct iovec *lvec, unsigned long liovcnt, const struct iovec *rvec, unsigned long riovcnt, unsigned long flags);"
 
 while read -r line; do
 	number=$(echo "$line" | cut -d ' ' -f3)
 
-	if [[ ! -z $1 && $number == $1 ]]; then
-		break
+	if [[ ! -z $1 && $number != $1 ]]; then
+		continue
 	fi
 
 	if [[ $number =~ ^[0-9]+$ ]] ; then
@@ -49,7 +52,7 @@ while read -r line; do
 				synopsis="$(echo "$content" | sed -n '/^SYNOPSIS/,/^[A-Z]/p' | sed '$d')"
 				includes="$(echo "$synopsis" | grep '#include' | awk '{ $1=$1; print }'	| cut -d ' ' -f -2)"
 			
-				#s1="$(echo "$synopsis" | grep "$name(" -A 1 -m 1)"
+				#s1="$(echo "$synopsis" | grep "$name(" -A 2 -m 1)"
 				#s2="$(echo "$s1" | tr -d '\n' | xargs | sed 's/; /;\n/g')"
 				#s3="$(echo "$s2" | grep "[\*_ ]$name(" | sed "s/_$name/$name/g")"
 	
@@ -61,7 +64,7 @@ while read -r line; do
 				fi
 
 				#IFS=$'\n'; array=( $(echo "$s3") )
-				IFS=$'\n'; array=( $(echo "$synopsis" | grep "$name(" -A 1 -m 1 | tr -d	'\n' | xargs | sed 's/; /;\n/g' | grep "[\*_ ]$name(" | sed	"s/_$name/$name/g") )
+				IFS=$'\n'; array=( $(echo "$synopsis" | grep "$name(" -A 2 -m 1 | tr -d	'\n' | xargs | sed 's/; /;\n/g' | grep "[\*_ ]$name(" | sed	"s/_$name/$name/g") )
 	
 				len=0
 

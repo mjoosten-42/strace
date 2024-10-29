@@ -1,6 +1,7 @@
 #include <clang-c/Index.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 typedef struct s_data {
 	int nr;
@@ -9,16 +10,21 @@ typedef struct s_data {
 }	t_data;
 
 const char *file = "generate/prototypes.c";
+const int inspect = -1;
 
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata);
 enum CXChildVisitResult argument_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata);
 void print_argument(CXType type, CXClientData clientdata);
 const char *getTypeSpelling(CXType type);
 
-int main() {
-	t_data data = { 0, 22, { 0 } };
+int main(int argc, char **argv) {
+	t_data data = { 0, inspect, { 0 } };
 	CXIndex index = clang_createIndex(0, 0);
 	CXTranslationUnit unit = clang_parseTranslationUnit(index, file, NULL, 0, NULL, 0, CXTranslationUnit_None);
+
+	if (argc >= 2) {
+		data.inspect = atoi(argv[1]);
+	}
 
 	if (unit == NULL) {
 		fprintf(stderr, "Unable to parse translation unit. Quitting.\n");
@@ -29,13 +35,13 @@ int main() {
 
 	clang_visitChildren(cursor, prototype_visitor, &data);
 
-	printf("\n");
+	printf("Encountered types:\n");
 
 	for (int i = 0; i < 200; i++) {
 		if (data.type_exists[i]) {
 			CXString spelling = clang_getTypeKindSpelling(i);
 		
-			printf("%s\n", clang_getCString(spelling));
+			printf("\t%s\n", clang_getCString(spelling));
 		}
 	}
 }
@@ -49,13 +55,14 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 		return CXChildVisit_Continue;
 	}
 
-	if (data->inspect == -1 || data->nr == data->inspect) {
+	if (data->inspect == -1 || data->inspect == data->nr) {
 		CXString display_name = clang_getCursorDisplayName(cursor);
 		CXType type = clang_getCursorType(cursor);
 		CXType return_type = clang_getResultType(type);
+		int argc = clang_Cursor_getNumArguments(cursor);
 
 		print_argument(return_type, clientdata);
-		printf("%3i: %s\n", data->nr, (char *)display_name.data);
+		printf("%3i: %s: %i\n", data->nr, clang_getCString(display_name), argc);
 		clang_visitChildren(cursor, argument_visitor, clientdata);
 		printf("\n");
 	}
@@ -87,10 +94,22 @@ void print_argument(CXType type, CXClientData clientdata) {
 
 	data->type_exists[type.kind] = 1;
 
+	if (size == CXTypeLayoutError_Incomplete) {
+		size = sizeof(void *);
+	}
+
 	printf("\t%d: %s", size, getTypeSpelling(type));
 
-	if (type.kind == CXType_Pointer) {
-		printf(" %s", getTypeSpelling(clang_getPointeeType(type)));
+	switch (type.kind) {
+		case CXType_Pointer:
+			printf(" %s", getTypeSpelling(clang_getPointeeType(type)));
+			break;
+		case CXType_ConstantArray:
+		case CXType_IncompleteArray:
+			printf(" %s", getTypeSpelling(clang_getArrayElementType(type)));
+			break ;
+		default:
+			break;
 	}
 
 	printf("\n");

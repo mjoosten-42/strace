@@ -103,7 +103,7 @@
 /*  19 */ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 /*  20 */ ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 /*  21 */ int access(const char *pathname, int mode);
-/*  22 */ struct fd_pair pipe();
+/*  22 */ int pipe(int pipefds[2]);
 /*  23 */ int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 /*  24 */ int sched_yield(void);
 /*  25 */ void *mremap(void *old_address, size_t old_size, size_t new_size, int flags, ... /* void *new_address */);
@@ -220,7 +220,7 @@
 /* 136 */ int ustat(dev_t dev, struct ustat *ubuf);
 /* 137 */ int statfs(const char *path, struct statfs *buf);
 /* 138 */ int fstatfs(int fd, struct statfs *buf);
-/* 139 */ int sysfs(int option, const char *fsname);
+/* 139 */ int sysfs(int option, unsigned int fs_index, char *buf);
 /* 140 */ int getpriority(int which, id_t who);
 /* 141 */ int setpriority(int which, id_t who, int prio);
 /* 142 */ int sched_setparam(pid_t pid, const struct sched_param *param);
@@ -246,7 +246,7 @@
 /* 162 */ void sync(void);
 /* 163 */ int acct(const char *filename);
 /* 164 */ int settimeofday(const struct timeval *tv, const struct timezone *tz);
-/* 165 */ int mount(const char *source, const char *target, const char *filesystemtype, unsigned long mountflags,
+/* 165 */ int mount(const char *source, const char *target, const char *filesystemtype, unsigned long mountflags, const void *data);
 /* 166 */ int umount2(const char *target, int flags);
 /* 167 */ int swapon(const char *path, int swapflags);
 /* 168 */ int swapoff(const char *path);
@@ -283,7 +283,7 @@
 /* 199 */ int fremovexattr(int fd, const char *name);
 /* 200 */ int tkill(int tid, int sig);
 /* 201 */ time_t time(time_t *tloc);
-/* 202 */ long futex(uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout, /* or: uint32_t val2 */
+/* 202 */ long futex(uint32_t *uaddr, int futex_op, uint32_t val, const struct timespec *timeout, /* or: uint32_t val2 */ uint32_t *uaddr2, uint32_t val3);
 /* 203 */ int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask);
 /* 204 */ int sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask);
 /* 205 */ int set_thread_area(struct user_desc *u_info);
@@ -302,40 +302,40 @@
 /* 220 */ int semtimedop(int semid, struct sembuf *sops, size_t nsops, const struct timespec *timeout);
 /* 221 */ int fadvise64(int fd, loff_t offset, size_t len, int advice);
 /* 222 */ int timer_create(clockid_t clockid, struct sigevent *sevp, timer_t *timerid);
-/* 223 */ int timer_settime(timer_t timerid, int flags, const struct itimerspec *new_value,
+/* 223 */ int timer_settime(timer_t timerid, int flags, const struct itimerspec *new_value, struct itimerspec *old_value);
 /* 224 */ int timer_gettime(timer_t timerid, struct itimerspec *curr_value);
 /* 225 */ int timer_getoverrun(timer_t timerid);
 /* 226 */ int timer_delete(timer_t timerid);
 /* 227 */ int clock_settime(clockid_t clockid, const struct timespec *tp);
 /* 228 */ int clock_gettime(clockid_t clockid, struct timespec *tp);
 /* 229 */ int clock_getres(clockid_t clockid, struct timespec *res);
-/* 230 */ int clock_nanosleep(clockid_t clockid, int flags, const struct timespec *request,
+/* 230 */ int clock_nanosleep(clockid_t clockid, int flags, const struct timespec *request, struct timespec *remain);
 /* 231 */ void exit_group(int status);
 /* 232 */ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
 /* 233 */ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
 /* 234 */ int tgkill(int tgid, int tid, int sig);
 /* 235 */ int utimes(const char *filename, const struct timeval times[2]);
 /* 236 */ int vserver(); /* Unimplemented */
-/* 237 */ long mbind(void *addr, unsigned long len, int mode, const unsigned long *nodemask, unsigned long maxnode,
+/* 237 */ long mbind(void *addr, unsigned long len, int mode, const unsigned long *nodemask, unsigned long maxnode, unsigned flags);
 /* 238 */ long set_mempolicy(int mode, const unsigned long *nodemask, unsigned long maxnode);
-/* 239 */ long get_mempolicy(int *mode, unsigned long *nodemask, unsigned long maxnode, void *addr,
-/* 240 */ mqd_t mq_open(const char *name, int oflag, mode_t mode,
+/* 239 */ long get_mempolicy(int *mode, unsigned long *nodemask, unsigned long maxnode, void *addr, unsigned long flags);
+/* 240 */ mqd_t mq_open(const char *name, int oflag, mode_t mode, struct mq_attr *attr);
 /* 241 */ int mq_unlink(const char *name);
-/* 242 */ int mq_timedsend(mqd_t mqdes, const char *msg_ptr, size_t msg_len, unsigned int msg_prio,
-/* 243 */ ssize_t mq_timedreceive(mqd_t mqdes, char *msg_ptr, size_t msg_len, unsigned int *msg_prio,
+/* 242 */ int mq_timedsend(mqd_t mqdes, const char *msg_ptr, size_t msg_len, unsigned int msg_prio, const struct timespec *abs_timeout);
+/* 243 */ ssize_t mq_timedreceive(mqd_t mqdes, char *msg_ptr, size_t msg_len, unsigned int *msg_prio, const struct timespec *abs_timeout);
 /* 244 */ int mq_notify(mqd_t mqdes, const struct sigevent *sevp);
 /* 245 */ int mq_getsetattr(mqd_t mqdes, const struct mq_attr *newattr, struct mq_attr *oldattr);
 /* 246 */ long kexec_load(unsigned long entry, unsigned long nr_segments, struct kexec_segment *segments, unsigned long flags);
 /* 247 */ int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
-/* 248 */ key_serial_t add_key(const char *type, const char *description, const void *payload, size_t plen,
-/* 249 */ key_serial_t request_key(const char *type, const char *description, const char *callout_info,
+/* 248 */ key_serial_t add_key(const char *type, const char *description, const void *payload, size_t plen, key_serial_t keyring);
+/* 249 */ key_serial_t request_key(const char *type, const char *description, const char *callout_info, key_serial_t dest_keyring);
 /* 250 */ long keyctl(int operation, ...);
 /* 251 */ int ioprio_set(int which, int who, int ioprio);
 /* 252 */ int ioprio_get(int which, int who);
 /* 253 */ int inotify_init(void);
 /* 254 */ int inotify_add_watch(int fd, const char *pathname, uint32_t mask);
 /* 255 */ int inotify_rm_watch(int fd, int wd);
-/* 256 */ long migrate_pages(int pid, unsigned long maxnode, const unsigned long *old_nodes,
+/* 256 */ long migrate_pages(int pid, unsigned long maxnode, const unsigned long *old_nodes, const unsigned long *new_nodes);
 /* 257 */ int openat(int dirfd, const char *pathname, int flags, mode_t mode);
 /* 258 */ int mkdirat(int dirfd, const char *pathname, mode_t mode);
 /* 259 */ int mknodat(int dirfd, const char *pathname, mode_t mode, dev_t dev);
@@ -360,12 +360,12 @@
 /* 278 */ ssize_t vmsplice(int fd, const struct iovec *iov, unsigned long nr_segs, unsigned int flags);
 /* 279 */ long move_pages(int pid, unsigned long count, void **pages, const int *nodes, int *status, int flags);
 /* 280 */ int utimensat(int dirfd, const char *pathname, const struct timespec times[2], int flags);
-/* 281 */ int epoll_pwait(int epfd, struct epoll_event *events, int maxevents, int timeout,
+/* 281 */ int epoll_pwait(int epfd, struct epoll_event *events, int maxevents, int timeout, const sigset_t *sigmask);
 /* 282 */ int signalfd(int fd, const sigset_t *mask, int flags);
 /* 283 */ int timerfd_create(int clockid, int flags);
 /* 284 */ int eventfd(unsigned int initval, int flags);
 /* 285 */ int fallocate(int fd, int mode, off_t offset, off_t len);
-/* 286 */ int timerfd_settime(int fd, int flags, const struct itimerspec *new_value,
+/* 286 */ int timerfd_settime(int fd, int flags, const struct itimerspec *new_value, struct itimerspec *old_value);
 /* 287 */ int timerfd_gettime(int fd, struct itimerspec *curr_value);
 /* 288 */ int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags);
 /* 289 */ int signalfd4(int ufd, sigset_t *user_mask, size_t sizemask, int flags);
@@ -377,20 +377,20 @@
 /* 295 */ ssize_t preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset);
 /* 296 */ ssize_t pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset);
 /* 297 */ int rt_tgsigqueueinfo(pid_t tgid, pid_t tid, int sig, siginfo_t *info);
-/* 298 */ int perf_event_open(struct perf_event_attr *attr, pid_t pid, int cpu, int group_fd,
+/* 298 */ int perf_event_open(struct perf_event_attr *attr, pid_t pid, int cpu, int group_fd, unsigned long flags);
 /* 299 */ int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags, struct timespec *timeout);
 /* 300 */ int fanotify_init(unsigned int flags, unsigned int event_f_flags);
 /* 301 */ int fanotify_mark(int fanotify_fd, unsigned int flags, uint64_t mask, int dirfd, const char *pathname);
 /* 302 */ int prlimit64(pid_t pid, unsigned int resource, const struct rlimit64 *new_rlim, struct rlimit64 *old_rlim);
-/* 303 */ int name_to_handle_at(int dirfd, const char *pathname, struct file_handle *handle,
+/* 303 */ int name_to_handle_at(int dirfd, const char *pathname, struct file_handle *handle, int *mount_id, int flags);
 /* 304 */ int open_by_handle_at(int mount_fd, struct file_handle *handle, int flags);
 /* 305 */ int clock_adjtime(clockid_t clk_id, struct timex *buf);
 /* 306 */ int syncfs(int fd);
 /* 307 */ int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
 /* 308 */ int setns(int fd, int nstype);
 /* 309 */ int getcpu(unsigned *cpu, unsigned *node, struct getcpu_cache *tcache);
-/* 310 */ ssize_t process_vm_readv(pid_t pid, const struct iovec *local_iov,
-/* 311 */ ssize_t process_vm_writev(pid_t pid, const struct iovec *local_iov,
+/* 310 */ int process_vm_readv(pid_t pid, const struct iovec *lvec, unsigned long liovcnt, const struct iovec *rvec, unsigned long riovcnt, unsigned long flags);
+/* 311 */ int process_vm_writev(pid_t pid, const struct iovec *lvec, unsigned long liovcnt, const struct iovec *rvec, unsigned long riovcnt, unsigned long flags);
 /* 312 */ int kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2);
 /* 313 */ int finit_module(int fd, const char *param_values, int flags);
 /* 314 */ int sched_setattr(pid_t pid, struct sched_attr *attr, unsigned int flags);
@@ -399,13 +399,13 @@
 /* 317 */ int seccomp(unsigned int operation, unsigned int flags, void *args);
 /* 318 */ ssize_t getrandom(void *buf, size_t buflen, unsigned int flags);
 /* 319 */ int memfd_create(const char *name, unsigned int flags);
-/* 320 */ long kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char *cmdline,
+/* 320 */ long kexec_file_load(int kernel_fd, int initrd_fd, unsigned long cmdline_len, const char *cmdline, unsigned long flags);
 /* 321 */ int bpf(int cmd, union bpf_attr *attr, unsigned int size);
-/* 322 */ int execveat(int dirfd, const char *pathname, char *const argv[], char *const envp[],
+/* 322 */ int execveat(int dirfd, const char *pathname, char *const argv[], char *const envp[], int flags);
 /* 323 */ int userfaultfd(int flags);
 /* 324 */ int membarrier(int cmd, unsigned int flags, int cpu_id);
 /* 325 */ int mlock2(const void *addr, size_t len, int flags);
-/* 326 */ ssize_t copy_file_range(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
+/* 326 */ ssize_t copy_file_range(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out, size_t len, unsigned int flags);
 /* 327 */ ssize_t preadv2(int fd, const struct iovec *iov, int iovcnt, off_t offset, int flags);
 /* 328 */ ssize_t pwritev2(int fd, const struct iovec *iov, int iovcnt, off_t offset, int flags);
 /* 329 */ int pkey_mprotect(void *addr, size_t len, int prot, int pkey);
