@@ -13,7 +13,7 @@ statbuf:	resb	256
 section .text
 
 _start:
-	mov		rax, 78
+	mov		rax, 214
 	mov		rdi, 0
 	mov		rsi, 0
 	mov		rdx, 0

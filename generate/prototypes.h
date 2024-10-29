@@ -295,6 +295,8 @@
 /** 211 */ int get_thread_area(struct user_desc *u_info);
 /** 212 */ int lookup_dcookie(u64 cookie, char *buffer, size_t len);
 /** 213 */ int epoll_create(int size);
+/** 214 */ int epoll_ctl_old(int, int, struct e_poll_event *);
+/** 215 */ int epoll_wait_old(int, struct e_poll_event *, int);
 /** 216 */ int remap_file_pages(void *addr, size_t size, int prot, size_t pgoff, int flags);
 /** 217 */ ssize_t getdents64(int fd, void *dirp, size_t count);
 /** 218 */ pid_t set_tid_address(int *tidptr);
