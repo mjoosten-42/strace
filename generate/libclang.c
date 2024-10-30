@@ -4,24 +4,17 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#define SIZE 64
-
 typedef struct s_data {
 	int current;
 	int inspect;
 }	t_data;
 
 const char *file = "generate/prototypes.h";
-
-enum CXChildVisitResult prototype(CXCursor cursor, CXCursor parent, CXClientData clientdata);
-enum CXChildVisitResult argument(CXCursor cursor, CXCursor parent, CXClientData clientdata);
+const int max = 10;
 
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata);
-enum CXChildVisitResult argument_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata);
-enum CXVisitorResult field_visitor(CXCursor cursor, CXClientData clientdata);
-void print_argument(CXCursor cursor, CXType type, CXClientData clientdata);
+const char *get_format(CXType type);
 void print_type(CXType type, CXClientData clientdata);
-const char *getTypeSpelling(CXType type);
 
 int main(int argc, char **argv) {
 	t_data data = { 0, -1 };
@@ -63,60 +56,113 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 
 	int number = atoi(clang_getCString(clang_Cursor_getBriefCommentText(cursor)));
 
+	// fill non-continuous syscall entries
 	while (data->current < number) {
-		printf("\t\t{ %i },\n", data->current);
+		printf("\t\t{ 0 },\n");
 
 		data->current++;
 	}
 
 	if (data->inspect == -1 || data->inspect == number) {
-		CXType proto = clang_getCursorType(cursor);
-		CXType return_type = clang_getResultType(proto);
-		int argc = clang_Cursor_getNumArguments(cursor);
 		CXString spelling = clang_getCursorSpelling(cursor);
+		CXString display = clang_getCursorDisplayName(cursor);
+		CXType proto = clang_getCursorType(cursor);
+		int argc = clang_Cursor_getNumArguments(cursor);
 
-		//TODO: args
-		printf("\t\t{ %i, %i, %s },\n", data->current, argc, clang_getCString(spelling));
+		printf("\t\t/* %s */\n", clang_getCString(display));		// prototype
+
+		// general info
+		printf("\t\t{ ");
+		printf("%3i, ", data->current);						// syscall number
+		printf("%i, ", argc);								// argc
+		printf("\"%s\", ", clang_getCString(spelling));	// syscall name
+		
+		// return type
+		CXType return_type = clang_getResultType(proto);
+		int size = clang_Type_getSizeOf(return_type);
+		const char *format = get_format(return_type);
+
+		printf("{ \"%s\", %i }, ", format, size); // format
+		printf("{ ");
+
+		for (int i = 0; i < argc; i++) {
+			CXType arg = clang_getArgType(proto, i);
+			const char *format = get_format(arg);			
+			int size = clang_Type_getSizeOf(arg);
+
+			if (size == CXTypeLayoutError_Incomplete) {
+				size = sizeof(void *);
+			}
+
+			printf("{ \"%s\", %i }", format, size); // format
+
+			if (i < argc - 1) {
+				printf(", ");
+			} else {
+				printf(" ");
+			}
+		}
+
+		printf("} },\n");
+		
+		data->current++;
+
+		clang_disposeString(display);
+		clang_disposeString(spelling);
+	} else {
+		printf("\t\t{ 0 },\n");
 
 		data->current++;
 	}
 
-	return CXChildVisit_Continue;
-}
-
-enum CXChildVisitResult argument_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata) {
-	CXType type = clang_getCursorType(cursor);
-	enum CXCursorKind cursorKind = clang_getCursorKind(cursor);
-
-	if (cursorKind == CXCursor_ParmDecl) {
-		print_argument(cursor, type, clientdata);
+	if (data->current >= max) {
+		//return CXChildVisit_Break;
 	}
 
 	return CXChildVisit_Continue;
 }
 
-enum CXVisitorResult field_visitor(CXCursor cursor, CXClientData clientdata) {
-	CXType type = clang_getCanonicalType(clang_getCursorType(cursor));
-	t_data *data = (t_data *)clientdata;
+const char *get_format(CXType type) {
+	CXType pointee;
+	const static char *formats[] = {
+		"%lu",	// ULong
+		"%li",	// Long
+		"%u",	// UInt
+		"%i",	// Int
+		"%p",	// Pointer
+		"%d",	// Enum
+		"%p",	// ConstantArray
+		"%s",	// Pointer Char
+	};
 
-	print_type(type, clientdata);
-
-	return CXVisit_Continue;
-}
-
-void print_argument(CXCursor cursor, CXType type, CXClientData clientdata) {
 	type = clang_getCanonicalType(type);
-	int size = clang_Type_getSizeOf(type);
-	t_data *data = (t_data *)clientdata;
 
-	// CXType_IncompleteArray decays to pointer
-	if (size == CXTypeLayoutError_Incomplete) {
-		size = sizeof(void *);
-	}
+	switch (type.kind) {
+		case CXType_ULong:
+			return formats[0];
+		case CXType_Long:
+			return formats[1];
+		case CXType_UInt:
+			return formats[2];
+		case CXType_Int:
+			return formats[3];
+		case CXType_Pointer:
+		case CXType_IncompleteArray:
+			pointee = clang_getPointeeType(type);
 
-	printf("\t%d: ", size);
-	print_type(type, clientdata);
-	printf("\n");
+			switch (pointee.kind) {
+				case CXType_Char_S:
+					return formats[7];
+				default:
+					return formats[4];
+			};
+		case CXType_Enum:
+			return formats[5];
+		case CXType_ConstantArray:
+			return formats[6];
+		default:
+			return formats[3];
+	};
 }
 
 void print_type(CXType type, CXClientData clientdata) {
@@ -125,7 +171,7 @@ void print_type(CXType type, CXClientData clientdata) {
 	
 	type = clang_getCanonicalType(type);
 
-	printf("%s", getTypeSpelling(type));
+	printf("%s", clang_getCString(clang_getTypeKindSpelling(type.kind)));
 
 	switch (type.kind) {
 		case CXType_Pointer:
@@ -145,21 +191,9 @@ void print_type(CXType type, CXClientData clientdata) {
 				break;
 			} 
 
-			clang_Type_visitFields(type, field_visitor, clientdata);
+			//clang_Type_visitFields(type, field_visitor, clientdata);
 		default:
 			break;
 	}
-}
-
-const char *getTypeSpelling(CXType type) {
-	return clang_getCString(clang_getTypeKindSpelling(type.kind));
-}
-
-const char *indents(int level) {
-	static char tabs[SIZE] = { 0 };
-
-	memset(tabs, '\t', SIZE - 1);
-
-	return tabs + SIZE - 1 - level;
 }
 

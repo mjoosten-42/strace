@@ -1,17 +1,18 @@
+#define _GNU_SOURCE // strerrorname_np
+
 #include "strace.h"
 #include "syscall.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/ptrace.h>
-#include <sys/syscall.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <stdio.h>		// fprintf
+#include <stdlib.h>		// exit
+#include <string.h>		// strerror
+#include <sys/ptrace.h> // ptrace
+#include <sys/wait.h>	// waitpid
 
 void trace(pid_t pid) {
-	struct __ptrace_syscall_info info			 = { 0 };
-	int							 status			 = 0;
-	int							 syscall_started = 0;
+	const syscall_info		   *sys_info = NULL;
+	struct __ptrace_syscall_info info	  = { 0 };
+	int							 status	  = 0;
 
 	waitpid(pid, &status, 0);
 	ptrace_wrap(PTRACE_SETOPTIONS, pid, NULL, (void *)PTRACE_O_TRACESYSGOOD);
@@ -21,7 +22,7 @@ void trace(pid_t pid) {
 		waitpid_wrap(pid, &status);					  // block tracer
 
 		if (WIFEXITED(status)) {
-			if (syscall_started) {
+			if (sys_info) {
 				fprintf(stderr, "?\n");
 			}
 
@@ -31,27 +32,37 @@ void trace(pid_t pid) {
 
 		ptrace_wrap(PTRACE_GET_SYSCALL_INFO, pid, (void *)sizeof(info), &info);
 
-		const syscall_info *sys_info = get_syscall_info(info.entry.nr);
-
 		if (info.op == PTRACE_SYSCALL_INFO_ENTRY) {
+			sys_info = get_syscall_info(info.entry.nr);
+
 			fprintf(stderr, "%s(", sys_info->name);
-			
+
 			for (int i = 0; i < sys_info->argc; i++) {
 				fprintf(stderr, sys_info->args[i].format, info.entry.args[i]);
-				
+
 				if (i < sys_info->argc - 1) {
 					fprintf(stderr, ", ");
 				}
 			}
 
 			fprintf(stderr, ") = ");
-
-			syscall_started = 1;
 		}
 
 		if (info.op == PTRACE_SYSCALL_INFO_EXIT) {
-			fprintf(stderr, "%li\n", info.exit.rval);
-			syscall_started = 0;
+			int ret = info.exit.rval;
+
+			if (ret < 0) {
+				const char *errname = strerrorname_np(-ret);
+				const char *errmsg	= strerror(-ret);
+
+				fprintf(stderr, "%i %s (%s)", -1, errname, errmsg);
+			} else {
+				fprintf(stderr, sys_info->ret.format, ret);
+			}
+
+			fprintf(stderr, "\n");
+
+			sys_info = NULL;
 		}
 	}
 }
