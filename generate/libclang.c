@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
 
 	printf("#include \"syscall.h\"\n");
 	printf("\n");
-	printf("const syscall_info *get_syscall_info(int nr) {\n");
-	printf("\tstatic const syscall_info syscalls[] = {\n");
+	printf("const t_syscall_prototype *syscall_get_prototype(int nr) {\n");
+	printf("\tstatic const t_syscall_prototype syscalls[] = {\n");
 
 	clang_visitChildren(cursor, prototype_visitor, &data);
 

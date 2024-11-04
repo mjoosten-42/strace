@@ -10,77 +10,72 @@
 #include <sys/wait.h>	// waitpid
 
 void trace(pid_t pid) {
-	const syscall_info		   *sys_info = NULL;
-	struct __ptrace_syscall_info info	  = { 0 };
-	int							 status	  = 0;
+	t_syscall_info info	  = { 0 };
+	int			   status = 0;
 
-	waitpid(pid, &status, 0);
-	ptrace_wrap(PTRACE_SETOPTIONS, pid, NULL, (void *)PTRACE_O_TRACESYSGOOD);
+	CHECK_SYSCALL(waitpid(pid, &status, 0));
+	CHECK_SYSCALL(ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD));
 
 	while (1) {
-		ptrace_wrap(PTRACE_SYSCALL, pid, NULL, NULL); // restart tracee
-		waitpid_wrap(pid, &status);					  // block tracer
+		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, NULL, NULL));
+		CHECK_SYSCALL(waitpid(pid, &status, 0));
 
 		if (WIFEXITED(status)) {
-			if (sys_info) {
-				fprintf(stderr, "?\n");
-			}
-
-			fprintf(stderr, "+++ exited with %i +++\n", WEXITSTATUS(status));
+			on_tracee_exit(&info, status);
 			break;
 		}
 
-		ptrace_wrap(PTRACE_GET_SYSCALL_INFO, pid, (void *)sizeof(info), &info);
+		CHECK_SYSCALL(ptrace(PTRACE_GET_SYSCALL_INFO, pid, sizeof(info.values), &info.values));
 
-		if (info.op == PTRACE_SYSCALL_INFO_ENTRY) {
-			sys_info = get_syscall_info(info.entry.nr);
-
-			fprintf(stderr, "%s(", sys_info->name);
-
-			for (int i = 0; i < sys_info->argc; i++) {
-				fprintf(stderr, sys_info->args[i].format, info.entry.args[i]);
-
-				if (i < sys_info->argc - 1) {
-					fprintf(stderr, ", ");
-				}
-			}
-
-			fprintf(stderr, ") = ");
+		if (info.values.op == PTRACE_SYSCALL_INFO_ENTRY) {
+			on_syscall_start(&info);
 		}
 
-		if (info.op == PTRACE_SYSCALL_INFO_EXIT) {
-			int ret = info.exit.rval;
-
-			if (ret < 0) {
-				const char *errname = strerrorname_np(-ret);
-				const char *errmsg	= strerror(-ret);
-
-				fprintf(stderr, "%i %s (%s)", -1, errname, errmsg);
-			} else {
-				fprintf(stderr, sys_info->ret.format, ret);
-			}
-
-			fprintf(stderr, "\n");
-
-			sys_info = NULL;
+		if (info.values.op == PTRACE_SYSCALL_INFO_EXIT) {
+			on_syscall_end(&info);
 		}
 	}
 }
 
-long ptrace_wrap(int op, pid_t pid, void *addr, void *data) {
-	long ret = ptrace(op, pid, addr, data);
+void on_syscall_start(t_syscall_info *info) {
+	info->prototype = syscall_get_prototype(info->values.entry.nr);
 
-	if (ret == -1) {
-		perror("ptrace");
-		exit(EXIT_FAILURE);
+	fprintf(stderr, "%s(", info->prototype->name);
+
+	for (int i = 0; i < info->prototype->argc; i++) {
+		fprintf(stderr, info->prototype->args[i].format, info->values.entry.args[i]);
+
+		if (i < info->prototype->argc - 1) {
+			fprintf(stderr, ", ");
+		}
 	}
 
-	return ret;
+	fprintf(stderr, ") = ");
+
+	info->running = 1;
 }
 
-void waitpid_wrap(pid_t pid, int *status) {
-	if (waitpid(pid, status, 0) == -1) {
-		perror("waitpid");
-		exit(EXIT_FAILURE);
+void on_syscall_end(t_syscall_info *info) {
+	int ret = info->values.exit.rval;
+
+	if (ret < 0) {
+		const char *errname = strerrorname_np(-ret);
+		const char *errmsg	= strerror(-ret);
+
+		fprintf(stderr, "%i %s (%s)", -1, errname, errmsg);
+	} else {
+		fprintf(stderr, info->prototype->ret.format, ret);
 	}
+
+	fprintf(stderr, "\n");
+
+	info->running = 0;
+}
+
+void on_tracee_exit(t_syscall_info *info, int status) {
+	if (info->running) {
+		fprintf(stderr, "?\n");
+	}
+
+	fprintf(stderr, "+++ exited with %i +++\n", WEXITSTATUS(status));
 }

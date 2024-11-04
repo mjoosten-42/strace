@@ -1,19 +1,27 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
-typedef struct s_arg_info {
+#include <sys/ptrace.h>
+
+typedef struct s_syscall_arg {
 	char format[4];
 	int	 size;
-} arg_info;
+} t_syscall_arg;
+
+typedef struct s_syscall_prototype {
+	int			  nr;
+	int			  argc;
+	char		  name[32];
+	t_syscall_arg ret;
+	t_syscall_arg args[6];
+} t_syscall_prototype;
 
 typedef struct s_syscall_info {
-	int		 nr;
-	int		 argc;
-	char	 name[32];
-	arg_info ret;
-	arg_info args[6];
-} syscall_info;
+	struct __ptrace_syscall_info values;
+	const t_syscall_prototype	  *prototype;
+	unsigned int				 running : 1;
+} t_syscall_info;
 
-const syscall_info *get_syscall_info(int nr);
+const t_syscall_prototype *syscall_get_prototype(int nr);
 
 #endif

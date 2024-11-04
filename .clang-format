@@ -14,7 +14,7 @@ BreakBeforeBraces: Attach
 BreakBeforeTernaryOperators: false
 BreakStringLiterals: true
 
-ColumnLimit: 80
+ColumnLimit: 120
 Cpp11BracedListStyle: false
 
 IncludeBlocks: Regroup

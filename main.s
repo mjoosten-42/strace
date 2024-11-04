@@ -31,6 +31,21 @@ _start:
 	mov		rsi, 4096
 	syscall
 
+	mov		rax, 22
+	mov		rdi, rsp
+	push	0
+	syscall
+
+	mov		rax, 3
+	lea		edi, [rsp + 8]
+	syscall
+
+	mov		rax, 3
+	lea		edi, [rsp + 4]
+	syscall
+
+	pop		rax
+
 	mov		rax, 60
 	mov		rdi, 0
 	syscall
