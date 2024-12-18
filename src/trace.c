@@ -9,7 +9,7 @@
 #include <sys/ptrace.h> // ptrace
 #include <sys/wait.h>	// waitpid
 
-void trace(pid_t pid) {
+int trace(pid_t pid) {
 	t_syscall_info info	  = { 0 };
 	int			   status = 0;
 
@@ -35,6 +35,8 @@ void trace(pid_t pid) {
 			on_syscall_end(&info);
 		}
 	}
+
+	return WEXITSTATUS(status);
 }
 
 void on_syscall_start(t_syscall_info *info) {
@@ -43,7 +45,8 @@ void on_syscall_start(t_syscall_info *info) {
 	fprintf(stderr, "%s(", info->prototype->name);
 
 	for (int i = 0; i < info->prototype->argc; i++) {
-		fprintf(stderr, info->prototype->args[i].format, info->values.entry.args[i]);
+		//fprintf(stderr, info->prototype->args[i].format, info->values.entry.args[i]);
+		fprintf(stderr, "%lx", info->values.entry.args[i]);
 
 		if (i < info->prototype->argc - 1) {
 			fprintf(stderr, ", ");

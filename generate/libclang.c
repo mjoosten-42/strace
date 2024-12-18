@@ -9,15 +9,24 @@ typedef struct s_data {
 	int inspect;
 }	t_data;
 
-const char *file = "generate/prototypes.h";
-const int max = 10;
-
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata);
 const char *get_format(CXType type);
 void print_type(CXType type, CXClientData clientdata);
 
+
+
 int main(int argc, char **argv) {
 	t_data data = { 0, -1 };
+	const char *file = "../inc/prototypes.h";
+
+	if (argc > 1) {
+		file = argv[1];
+	}
+
+	if (argc > 2 && isdigit(*argv[2])) {
+		data.inspect = atoi(argv[2]);
+	}
+
 	CXIndex index = clang_createIndex(0, 0);
 	CXTranslationUnit unit = clang_parseTranslationUnit(index, file, NULL, 0, NULL, 0, CXTranslationUnit_None | CXTranslationUnit_IncludeBriefCommentsInCodeCompletion);
 
@@ -28,10 +37,6 @@ int main(int argc, char **argv) {
 
 	CXCursor cursor = clang_getTranslationUnitCursor(unit);
 	
-	if (argc >= 2 && isdigit(*argv[1])) {
-		data.inspect = atoi(argv[1]);
-	}
-
 	printf("#include \"syscall.h\"\n");
 	printf("\n");
 	printf("const t_syscall_prototype *syscall_get_prototype(int nr) {\n");
@@ -43,6 +48,9 @@ int main(int argc, char **argv) {
 	printf("\n");
 	printf("\treturn &syscalls[nr];\n");
 	printf("}\n");
+
+	printf("\n");
+	printf("static const size_t syscall_max = %d;\n", data.current);
 }
 
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata) {
@@ -57,10 +65,8 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 	int number = atoi(clang_getCString(clang_Cursor_getBriefCommentText(cursor)));
 
 	// fill non-continuous syscall entries
-	while (data->current < number) {
+	for (; data->current < number; data->current++) {
 		printf("\t\t{ 0 },\n");
-
-		data->current++;
 	}
 
 	if (data->inspect == -1 || data->inspect == number) {
@@ -69,20 +75,20 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 		CXType proto = clang_getCursorType(cursor);
 		int argc = clang_Cursor_getNumArguments(cursor);
 
-		printf("\t\t/* %s */\n", clang_getCString(display));		// prototype
+		printf("\t\t/* %s */\n", clang_getCString(display));	// prototype
 
 		// general info
 		printf("\t\t{ ");
-		printf("%3i, ", data->current);						// syscall number
-		printf("%i, ", argc);								// argc
-		printf("\"%s\", ", clang_getCString(spelling));	// syscall name
+		printf("%3i, ", data->current);							// syscall number
+		printf("%i, ", argc);									// argc
+		printf("\"%s\", ", clang_getCString(spelling));			// syscall name
 		
 		// return type
 		CXType return_type = clang_getResultType(proto);
 		int size = clang_Type_getSizeOf(return_type);
 		const char *format = get_format(return_type);
 
-		printf("{ \"%s\", %i }, ", format, size); // format
+		printf("{ \"%s\", %i }, ", format, size);				// format
 		printf("{ ");
 
 		for (int i = 0; i < argc; i++) {
@@ -94,13 +100,13 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 				size = sizeof(void *);
 			}
 
-			printf("{ \"%s\", %i }", format, size); // format
+			printf("{ \"%s\", %i }", format, size);				// format
 
 			if (i < argc - 1) {
-				printf(", ");
-			} else {
-				printf(" ");
+				printf(",");
 			}
+			
+			printf(" ");
 		}
 
 		printf("} },\n");
@@ -113,10 +119,6 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 		printf("\t\t{ 0 },\n");
 
 		data->current++;
-	}
-
-	if (data->current >= max) {
-		//return CXChildVisit_Break;
 	}
 
 	return CXChildVisit_Continue;
