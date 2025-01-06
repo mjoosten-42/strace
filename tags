@@ -17,12 +17,14 @@ _GNU_SOURCE	src/trace.c	/^#define _GNU_SOURCE /;"	d	file:
 argc	inc/syscall.h	/^	int			  argc;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
 args	inc/syscall.h	/^	t_syscall_arg args[6];$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg[6]
 format	inc/syscall.h	/^	char format[4];$/;"	m	struct:s_syscall_arg	typeref:typename:char[4]
-main	src/main.c	/^int main(int argc, char **argv, char **envp) {$/;"	f	typeref:typename:int
+main	src/main.c	/^int main(int argc, char **argv) {$/;"	f	typeref:typename:int
 name	inc/syscall.h	/^	char		  name[32];$/;"	m	struct:s_syscall_prototype	typeref:typename:char[32]
 nr	inc/syscall.h	/^	int			  nr;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
 on_syscall_end	src/trace.c	/^void on_syscall_end(t_syscall_info *info) {$/;"	f	typeref:typename:void
 on_syscall_start	src/trace.c	/^void on_syscall_start(t_syscall_info *info) {$/;"	f	typeref:typename:void
 on_tracee_exit	src/trace.c	/^void on_tracee_exit(t_syscall_info *info, int status) {$/;"	f	typeref:typename:void
+on_tracee_signalled	src/trace.c	/^void on_tracee_signalled(t_syscall_info *info, int status) {$/;"	f	typeref:typename:void
+on_tracee_stopped	src/trace.c	/^void on_tracee_stopped(t_syscall_info *info, int status) {$/;"	f	typeref:typename:void
 prototype	inc/syscall.h	/^	const t_syscall_prototype	  *prototype;$/;"	m	struct:s_syscall_info	typeref:typename:const t_syscall_prototype *
 ret	inc/syscall.h	/^	t_syscall_arg ret;$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg
 running	inc/syscall.h	/^	unsigned int				 running : 1;$/;"	m	struct:s_syscall_info	typeref:typename:unsigned int:1
@@ -34,5 +36,5 @@ syscall_get_prototype	src/syscall.c	/^const t_syscall_prototype *syscall_get_pro
 t_syscall_arg	inc/syscall.h	/^} t_syscall_arg;$/;"	t	typeref:struct:s_syscall_arg
 t_syscall_info	inc/syscall.h	/^} t_syscall_info;$/;"	t	typeref:struct:s_syscall_info
 t_syscall_prototype	inc/syscall.h	/^} t_syscall_prototype;$/;"	t	typeref:struct:s_syscall_prototype
-trace	src/trace.c	/^void trace(pid_t pid) {$/;"	f	typeref:typename:void
+trace	src/trace.c	/^int trace(pid_t pid) {$/;"	f	typeref:typename:int
 values	inc/syscall.h	/^	struct __ptrace_syscall_info values;$/;"	m	struct:s_syscall_info	typeref:struct:__ptrace_syscall_info

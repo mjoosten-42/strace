@@ -1,4 +1,5 @@
 SOURCES := \
-	src/trace.c \
 	src/syscall.c \
 	src/main.c \
+	src/trace.c \
+	src/signum.c \

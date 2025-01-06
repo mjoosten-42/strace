@@ -13,8 +13,6 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 const char *get_format(CXType type);
 void print_type(CXType type, CXClientData clientdata);
 
-
-
 int main(int argc, char **argv) {
 	t_data data = { 0, -1 };
 	const char *file = "../inc/prototypes.h";
