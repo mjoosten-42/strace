@@ -18,10 +18,13 @@ int main(int argc, char **argv) {
 	CHECK_SYSCALL(pid = fork());
 
 	if (!pid) {
+		// TODO: path search before kill
 		CHECK_SYSCALL(kill(getpid(), SIGSTOP));
 		CHECK_SYSCALL(execvp(argv[1], argv + 1));
 	}
 
+	eprintf("parent pid: %i\n", getpid());
+	eprintf("child  pid: %i\n", pid);
 	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD));
 
 	return trace(pid);

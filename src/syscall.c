@@ -1,5 +1,7 @@
 #include "syscall.h"
 
+#include <stddef.h>
+
 const t_syscall_prototype *syscall_get_prototype(int nr) {
 	static const t_syscall_prototype syscalls[] = {
 		/* read(int, void *, int) */
@@ -7,15 +9,15 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* write(int, const void *, int) */
 		{ 1, 3, "write", { "%li", 8 }, { { "%i", 4 }, { "%p", 8 }, { "%i", 4 } } },
 		/* open(const char *, int, mode_t) */
-		{ 2, 3, "open", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 }, { "%u", 4 } } },
+		{ 2, 3, "open", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 }, { "%u", 4 } } },
 		/* close(int) */
 		{ 3, 1, "close", { "%i", 4 }, { { "%i", 4 } } },
 		/* stat(const char *, struct stat *) */
-		{ 4, 2, "stat", { "%i", 4 }, { { "%s", 8 }, { "%p", 8 } } },
+		{ 4, 2, "stat", { "%i", 4 }, { { "\"%s\"", 8 }, { "%p", 8 } } },
 		/* fstat(int, struct stat *) */
 		{ 5, 2, "fstat", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
 		/* lstat(const char *, struct stat *) */
-		{ 6, 2, "lstat", { "%i", 4 }, { { "%s", 8 }, { "%p", 8 } } },
+		{ 6, 2, "lstat", { "%i", 4 }, { { "\"%s\"", 8 }, { "%p", 8 } } },
 		/* poll(struct pollfd *, nfds_t, int) */
 		{ 7, 3, "poll", { "%i", 4 }, { { "%p", 8 }, { "%lu", 8 }, { "%i", 4 } } },
 		/* lseek(int, off_t, int) */
@@ -32,8 +34,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 11, 2, "munmap", { "%i", 4 }, { { "%p", 8 }, { "%i", 4 } } },
 		/* brk(void *) */
 		{ 12, 1, "brk", { "%i", 4 }, { { "%p", 8 } } },
-		/* rt_sigaction(int, const struct sigaction *, struct sigaction *, int)
-		 */
+		/* rt_sigaction(int, const struct sigaction *, struct sigaction *, int) */
 		{ 13, 4, "rt_sigaction", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* rt_sigprocmask(int, const sigset_t *, sigset_t *, int) */
 		{ 14, 4, "rt_sigprocmask", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
@@ -42,15 +43,15 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* ioctl(int, unsigned long, ...) */
 		{ 16, 2, "ioctl", { "%i", 4 }, { { "%i", 4 }, { "%lu", 8 } } },
 		/* pread64(unsigned int, char *, int, loff_t) */
-		{ 17, 4, "pread64", { "%li", 8 }, { { "%u", 4 }, { "%s", 8 }, { "%i", 4 }, { "%li", 8 } } },
+		{ 17, 4, "pread64", { "%li", 8 }, { { "%u", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%li", 8 } } },
 		/* pwrite64(unsigned int, const char *, int, loff_t) */
-		{ 18, 4, "pwrite64", { "%li", 8 }, { { "%u", 4 }, { "%s", 8 }, { "%i", 4 }, { "%li", 8 } } },
+		{ 18, 4, "pwrite64", { "%li", 8 }, { { "%u", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%li", 8 } } },
 		/* readv(int, const struct iovec *, int) */
 		{ 19, 3, "readv", { "%li", 8 }, { { "%i", 4 }, { "%p", 8 }, { "%i", 4 } } },
 		/* writev(int, const struct iovec *, int) */
 		{ 20, 3, "writev", { "%li", 8 }, { { "%i", 4 }, { "%p", 8 }, { "%i", 4 } } },
 		/* access(const char *, int) */
-		{ 21, 2, "access", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 21, 2, "access", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* pipe(int *) */
 		{ 22, 1, "pipe", { "%i", 4 }, { { "%p", 8 } } },
 		/* select(int, fd_set *, fd_set *, fd_set *, struct timeval *) */
@@ -95,8 +96,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 42, 3, "connect", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%u", 4 } } },
 		/* accept(int, struct sockaddr *, socklen_t *) */
 		{ 43, 3, "accept", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
-		/* sendto(int, const void *, int, int, const struct sockaddr *,
-		   socklen_t) */
+		/* sendto(int, const void *, int, int, const struct sockaddr *, socklen_t) */
 		{ 44,
 		  6,
 		  "sendto",
@@ -135,7 +135,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* vfork() */
 		{ 58, 0, "vfork", { "%i", 4 }, {} },
 		/* execve(const char *, char *const *, char *const *) */
-		{ 59, 3, "execve", { "%i", 4 }, { { "%s", 8 }, { "%p", 8 }, { "%p", 8 } } },
+		{ 59, 3, "execve", { "%i", 4 }, { { "\"%s\"", 8 }, { "%p", 8 }, { "%p", 8 } } },
 		/* exit(int) */
 		{ 60, 1, "exit", { "%i", -2 }, { { "%i", 4 } } },
 		/* wait4(pid_t, int *, int, struct rusage *) */
@@ -169,43 +169,43 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* fdatasync(int) */
 		{ 75, 1, "fdatasync", { "%i", 4 }, { { "%i", 4 } } },
 		/* truncate(const char *, off_t) */
-		{ 76, 2, "truncate", { "%i", 4 }, { { "%s", 8 }, { "%li", 8 } } },
+		{ 76, 2, "truncate", { "%i", 4 }, { { "\"%s\"", 8 }, { "%li", 8 } } },
 		/* ftruncate(int, off_t) */
 		{ 77, 2, "ftruncate", { "%i", 4 }, { { "%i", 4 }, { "%li", 8 } } },
 		/* getdents(unsigned int, struct linux_dirent *, unsigned int) */
 		{ 78, 3, "getdents", { "%li", 8 }, { { "%u", 4 }, { "%p", 8 }, { "%u", 4 } } },
 		/* getcwd(char *, int) */
-		{ 79, 2, "getcwd", { "%s", 8 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 79, 2, "getcwd", { "\"%s\"", 8 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* chdir(const char *) */
-		{ 80, 1, "chdir", { "%i", 4 }, { { "%s", 8 } } },
+		{ 80, 1, "chdir", { "%i", 4 }, { { "\"%s\"", 8 } } },
 		/* fchdir(int) */
 		{ 81, 1, "fchdir", { "%i", 4 }, { { "%i", 4 } } },
 		/* rename(const char *, const char *) */
-		{ 82, 2, "rename", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 } } },
+		{ 82, 2, "rename", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 } } },
 		/* mkdir(const char *, mode_t) */
-		{ 83, 2, "mkdir", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 } } },
+		{ 83, 2, "mkdir", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 } } },
 		/* rmdir(const char *) */
-		{ 84, 1, "rmdir", { "%i", 4 }, { { "%s", 8 } } },
+		{ 84, 1, "rmdir", { "%i", 4 }, { { "\"%s\"", 8 } } },
 		/* creat(const char *, mode_t) */
-		{ 85, 2, "creat", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 } } },
+		{ 85, 2, "creat", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 } } },
 		/* link(const char *, const char *) */
-		{ 86, 2, "link", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 } } },
+		{ 86, 2, "link", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 } } },
 		/* unlink(const char *) */
-		{ 87, 1, "unlink", { "%i", 4 }, { { "%s", 8 } } },
+		{ 87, 1, "unlink", { "%i", 4 }, { { "\"%s\"", 8 } } },
 		/* symlink(const char *, const char *) */
-		{ 88, 2, "symlink", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 } } },
+		{ 88, 2, "symlink", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 } } },
 		/* readlink(const char *, char *, int) */
-		{ 89, 3, "readlink", { "%li", 8 }, { { "%s", 8 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 89, 3, "readlink", { "%li", 8 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* chmod(const char *, mode_t) */
-		{ 90, 2, "chmod", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 } } },
+		{ 90, 2, "chmod", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 } } },
 		/* fchmod(int, mode_t) */
 		{ 91, 2, "fchmod", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 } } },
 		/* chown(const char *, uid_t, gid_t) */
-		{ 92, 3, "chown", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 }, { "%u", 4 } } },
+		{ 92, 3, "chown", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 }, { "%u", 4 } } },
 		/* fchown(int, uid_t, gid_t) */
 		{ 93, 3, "fchown", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 }, { "%u", 4 } } },
 		/* lchown(const char *, uid_t, gid_t) */
-		{ 94, 3, "lchown", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 }, { "%u", 4 } } },
+		{ 94, 3, "lchown", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 }, { "%u", 4 } } },
 		/* umask(mode_t) */
 		{ 95, 1, "umask", { "%u", 4 }, { { "%u", 4 } } },
 		/* gettimeofday(struct timeval *, struct timezone *) */
@@ -223,7 +223,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* getuid() */
 		{ 102, 0, "getuid", { "%u", 4 }, {} },
 		/* syslog(int, char *, int) */
-		{ 103, 3, "syslog", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 103, 3, "syslog", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* getgid() */
 		{ 104, 0, "getgid", { "%u", 4 }, {} },
 		/* setuid(uid_t) */
@@ -272,8 +272,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 126, 2, "capset", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 } } },
 		/* rt_sigpending(sigset_t *, int) */
 		{ 127, 2, "rt_sigpending", { "%i", 4 }, { { "%p", 8 }, { "%i", 4 } } },
-		/* rt_sigtimedwait(const sigset_t *, siginfo_t *, const struct
-		   _kernel_timespec *, int) */
+		/* rt_sigtimedwait(const sigset_t *, siginfo_t *, const struct _kernel_timespec *, int) */
 		{ 128, 4, "rt_sigtimedwait", { "%i", 4 }, { { "%p", 8 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* rt_sigqueueinfo(pid_t, int, siginfo_t *) */
 		{ 129, 3, "rt_sigqueueinfo", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%p", 8 } } },
@@ -282,21 +281,21 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* sigaltstack(const stack_t *, stack_t *) */
 		{ 131, 2, "sigaltstack", { "%i", 4 }, { { "%p", 8 }, { "%p", 8 } } },
 		/* utime(const char *, const struct utimbuf *) */
-		{ 132, 2, "utime", { "%i", 4 }, { { "%s", 8 }, { "%p", 8 } } },
+		{ 132, 2, "utime", { "%i", 4 }, { { "\"%s\"", 8 }, { "%p", 8 } } },
 		/* mknod(const char *, mode_t, dev_t) */
-		{ 133, 3, "mknod", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 }, { "%lu", 8 } } },
+		{ 133, 3, "mknod", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 }, { "%lu", 8 } } },
 		/* uselib(const char *) */
-		{ 134, 1, "uselib", { "%i", 4 }, { { "%s", 8 } } },
+		{ 134, 1, "uselib", { "%i", 4 }, { { "\"%s\"", 8 } } },
 		/* personality(unsigned long) */
 		{ 135, 1, "personality", { "%i", 4 }, { { "%lu", 8 } } },
 		/* ustat(dev_t, struct ustat *) */
 		{ 136, 2, "ustat", { "%i", 4 }, { { "%lu", 8 }, { "%p", 8 } } },
 		/* statfs(const char *, struct statfs *) */
-		{ 137, 2, "statfs", { "%i", 4 }, { { "%s", 8 }, { "%p", 8 } } },
+		{ 137, 2, "statfs", { "%i", 4 }, { { "\"%s\"", 8 }, { "%p", 8 } } },
 		/* fstatfs(int, struct statfs *) */
 		{ 138, 2, "fstatfs", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
 		/* sysfs(int, unsigned int, char *) */
-		{ 139, 3, "sysfs", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 }, { "%s", 8 } } },
+		{ 139, 3, "sysfs", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 }, { "\"%s\"", 8 } } },
 		/* getpriority(int, id_t) */
 		{ 140, 2, "getpriority", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 } } },
 		/* setpriority(int, id_t, int) */
@@ -328,11 +327,10 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* modify_ldt(int, void *, unsigned long) */
 		{ 154, 3, "modify_ldt", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%lu", 8 } } },
 		/* pivot_root(const char *, const char *) */
-		{ 155, 2, "pivot_root", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 } } },
+		{ 155, 2, "pivot_root", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 } } },
 		/* _sysctl(struct _sysctl_args *) */
 		{ 156, 1, "_sysctl", { "%i", 4 }, { { "%p", 8 } } },
-		/* prctl(int, unsigned long, unsigned long, unsigned long, unsigned
-		   long) */
+		/* prctl(int, unsigned long, unsigned long, unsigned long, unsigned long) */
 		{ 157, 5, "prctl", { "%i", 4 }, { { "%i", 4 }, { "%lu", 8 }, { "%lu", 8 }, { "%lu", 8 }, { "%lu", 8 } } },
 		/* arch_prctl(int, unsigned long *) */
 		{ 158, 2, "arch_prctl", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
@@ -341,44 +339,51 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* setrlimit(int, const struct rlimit *) */
 		{ 160, 2, "setrlimit", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
 		/* chroot(const char *) */
-		{ 161, 1, "chroot", { "%i", 4 }, { { "%s", 8 } } },
+		{ 161, 1, "chroot", { "%i", 4 }, { { "\"%s\"", 8 } } },
 		/* sync() */
 		{ 162, 0, "sync", { "%i", -2 }, {} },
 		/* acct(const char *) */
-		{ 163, 1, "acct", { "%i", 4 }, { { "%s", 8 } } },
+		{ 163, 1, "acct", { "%i", 4 }, { { "\"%s\"", 8 } } },
 		/* settimeofday(const struct timeval *, const struct timezone *) */
 		{ 164, 2, "settimeofday", { "%i", 4 }, { { "%p", 8 }, { "%p", 8 } } },
-		/* mount(const char *, const char *, const char *, unsigned long, const
-		   void *) */
-		{ 165, 5, "mount", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 }, { "%s", 8 }, { "%lu", 8 }, { "%p", 8 } } },
+		/* mount(const char *, const char *, const char *, unsigned long, const void *) */
+		{ 165,
+		  5,
+		  "mount",
+		  { "%i", 4 },
+		  { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%lu", 8 }, { "%p", 8 } } },
 		/* umount2(const char *, int) */
-		{ 166, 2, "umount2", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 166, 2, "umount2", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* swapon(const char *, int) */
-		{ 167, 2, "swapon", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 167, 2, "swapon", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* swapoff(const char *) */
-		{ 168, 1, "swapoff", { "%i", 4 }, { { "%s", 8 } } },
-		/* reboot(int, int, int, void *) */
-		{ 169, 4, "reboot", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%i", 4 }, { "%p", 8 } } },
+		{ 168, 1, "swapoff", { "%i", 4 }, { { "\"%s\"", 8 } } },
+		/* reboot(int) */
+		{ 169, 1, "reboot", { "%i", 4 }, { { "%i", 4 } } },
 		/* sethostname(const char *, int) */
-		{ 170, 2, "sethostname", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 170, 2, "sethostname", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* setdomainname(const char *, int) */
-		{ 171, 2, "setdomainname", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 171, 2, "setdomainname", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* iopl(int) */
 		{ 172, 1, "iopl", { "%i", 4 }, { { "%i", 4 } } },
 		/* ioperm(unsigned long, unsigned long, int) */
 		{ 173, 3, "ioperm", { "%i", 4 }, { { "%lu", 8 }, { "%lu", 8 }, { "%i", 4 } } },
 		/* create_module(const char *, int) */
-		{ 174, 2, "create_module", { "%s", 8 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 174, 2, "create_module", { "\"%s\"", 8 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* init_module(void *, unsigned long, const char *) */
-		{ 175, 3, "init_module", { "%i", 4 }, { { "%p", 8 }, { "%lu", 8 }, { "%s", 8 } } },
+		{ 175, 3, "init_module", { "%i", 4 }, { { "%p", 8 }, { "%lu", 8 }, { "\"%s\"", 8 } } },
 		/* delete_module(const char *, int) */
-		{ 176, 2, "delete_module", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 } } },
+		{ 176, 2, "delete_module", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* get_kernel_syms(struct kernel_sym *) */
 		{ 177, 1, "get_kernel_syms", { "%i", 4 }, { { "%p", 8 } } },
 		/* query_module(const char *, int, void *, int, int *) */
-		{ 178, 5, "query_module", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 }, { "%p", 8 }, { "%i", 4 }, { "%p", 8 } } },
+		{ 178,
+		  5,
+		  "query_module",
+		  { "%i", 4 },
+		  { { "\"%s\"", 8 }, { "%i", 4 }, { "%p", 8 }, { "%i", 4 }, { "%p", 8 } } },
 		/* quotactl(int, const char *, int, caddr_t) */
-		{ 179, 4, "quotactl", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%s", 8 } } },
+		{ 179, 4, "quotactl", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "\"%s\"", 8 } } },
 		/* nfsservctl(int, struct nfsctl_arg *, union nfsctl_res *) */
 		{ 180, 3, "nfsservctl", { "%li", 8 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
 		/* getpmsg() */
@@ -396,35 +401,42 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* readahead(int, int, int) */
 		{ 187, 3, "readahead", { "%li", 8 }, { { "%i", 4 }, { "%i", 4 }, { "%i", 4 } } },
 		/* setxattr(const char *, const char *, const void *, int, int) */
-		{ 188, 5, "setxattr", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
+		{ 188,
+		  5,
+		  "setxattr",
+		  { "%i", 4 },
+		  { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
 		/* lsetxattr(const char *, const char *, const void *, int, int) */
-		{ 189, 5, "lsetxattr", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
+		{ 189,
+		  5,
+		  "lsetxattr",
+		  { "%i", 4 },
+		  { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
 		/* fsetxattr(int, const char *, const void *, int, int) */
-		{ 190, 5, "fsetxattr", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
+		{ 190, 5, "fsetxattr", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
 		/* getxattr(const char *, const char *, void *, int) */
-		{ 191, 4, "getxattr", { "%li", 8 }, { { "%s", 8 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		{ 191, 4, "getxattr", { "%li", 8 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* lgetxattr(const char *, const char *, void *, int) */
-		{ 192, 4, "lgetxattr", { "%li", 8 }, { { "%s", 8 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		{ 192, 4, "lgetxattr", { "%li", 8 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* fgetxattr(int, const char *, void *, int) */
-		{ 193, 4, "fgetxattr", { "%li", 8 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		{ 193, 4, "fgetxattr", { "%li", 8 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* listxattr(const char *, char *, int) */
-		{ 194, 3, "listxattr", { "%li", 8 }, { { "%s", 8 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 194, 3, "listxattr", { "%li", 8 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* llistxattr(const char *, char *, int) */
-		{ 195, 3, "llistxattr", { "%li", 8 }, { { "%s", 8 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 195, 3, "llistxattr", { "%li", 8 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* flistxattr(int, char *, int) */
-		{ 196, 3, "flistxattr", { "%li", 8 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 196, 3, "flistxattr", { "%li", 8 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* removexattr(const char *, const char *) */
-		{ 197, 2, "removexattr", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 } } },
+		{ 197, 2, "removexattr", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 } } },
 		/* lremovexattr(const char *, const char *) */
-		{ 198, 2, "lremovexattr", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 } } },
+		{ 198, 2, "lremovexattr", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 } } },
 		/* fremovexattr(int, const char *) */
-		{ 199, 2, "fremovexattr", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 } } },
+		{ 199, 2, "fremovexattr", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 } } },
 		/* tkill(int, int) */
 		{ 200, 2, "tkill", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 } } },
 		/* time(time_t *) */
 		{ 201, 1, "time", { "%li", 8 }, { { "%p", 8 } } },
-		/* futex(uint32_t *, int, uint32_t, const struct timespec *, uint32_t *,
-		   uint32_t) */
+		/* futex(uint32_t *, int, uint32_t, const struct timespec *, uint32_t *, uint32_t) */
 		{ 202,
 		  6,
 		  "futex",
@@ -440,8 +452,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 206, 2, "io_setup", { "%li", 8 }, { { "%u", 4 }, { "%p", 8 } } },
 		/* io_destroy(aio_context_t) */
 		{ 207, 1, "io_destroy", { "%i", 4 }, { { "%lu", 8 } } },
-		/* io_getevents(aio_context_t, long, long, struct io_event *, struct
-		   timespec *) */
+		/* io_getevents(aio_context_t, long, long, struct io_event *, struct timespec *) */
 		{ 208, 5, "io_getevents", { "%i", 4 }, { { "%lu", 8 }, { "%li", 8 }, { "%li", 8 }, { "%p", 8 }, { "%p", 8 } } },
 		/* io_submit(aio_context_t, long, struct iocb **) */
 		{ 209, 3, "io_submit", { "%i", 4 }, { { "%lu", 8 }, { "%li", 8 }, { "%p", 8 } } },
@@ -450,7 +461,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* get_thread_area(struct user_desc *) */
 		{ 211, 1, "get_thread_area", { "%i", 4 }, { { "%p", 8 } } },
 		/* lookup_dcookie(int, char *, int) */
-		{ 212, 3, "lookup_dcookie", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 212, 3, "lookup_dcookie", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* epoll_create(int) */
 		{ 213, 1, "epoll_create", { "%i", 4 }, { { "%i", 4 } } },
 		/* epoll_ctl_old(int, int, struct e_poll_event *) */
@@ -475,8 +486,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 221, 4, "fadvise64", { "%i", 4 }, { { "%i", 4 }, { "%li", 8 }, { "%i", 4 }, { "%i", 4 } } },
 		/* timer_create(clockid_t, struct sigevent *, timer_t *) */
 		{ 222, 3, "timer_create", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
-		/* timer_settime(timer_t, int, const struct itimerspec *, struct
-		   itimerspec *) */
+		/* timer_settime(timer_t, int, const struct itimerspec *, struct itimerspec *) */
 		{ 223, 4, "timer_settime", { "%i", 4 }, { { "%p", 8 }, { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
 		/* timer_gettime(timer_t, struct itimerspec *) */
 		{ 224, 2, "timer_gettime", { "%i", 4 }, { { "%p", 8 }, { "%p", 8 } } },
@@ -490,8 +500,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 228, 2, "clock_gettime", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
 		/* clock_getres(clockid_t, struct timespec *) */
 		{ 229, 2, "clock_getres", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
-		/* clock_nanosleep(clockid_t, int, const struct timespec *, struct
-		   timespec *) */
+		/* clock_nanosleep(clockid_t, int, const struct timespec *, struct timespec *) */
 		{ 230, 4, "clock_nanosleep", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
 		/* exit_group(int) */
 		{ 231, 1, "exit_group", { "%i", -2 }, { { "%i", 4 } } },
@@ -502,11 +511,10 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* tgkill(int, int, int) */
 		{ 234, 3, "tgkill", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%i", 4 } } },
 		/* utimes(const char *, const struct timeval *) */
-		{ 235, 2, "utimes", { "%i", 4 }, { { "%s", 8 }, { "%p", 32 } } },
+		{ 235, 2, "utimes", { "%i", 4 }, { { "\"%s\"", 8 }, { "%p", 32 } } },
 		/* vserver() */
 		{ 236, 0, "vserver", { "%i", 4 }, {} },
-		/* mbind(void *, unsigned long, int, const unsigned long *, unsigned
-		   long, unsigned int) */
+		/* mbind(void *, unsigned long, int, const unsigned long *, unsigned long, unsigned int) */
 		{ 237,
 		  6,
 		  "mbind",
@@ -514,40 +522,40 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		  { { "%p", 8 }, { "%lu", 8 }, { "%i", 4 }, { "%p", 8 }, { "%lu", 8 }, { "%u", 4 } } },
 		/* set_mempolicy(int, const unsigned long *, unsigned long) */
 		{ 238, 3, "set_mempolicy", { "%li", 8 }, { { "%i", 4 }, { "%p", 8 }, { "%lu", 8 } } },
-		/* get_mempolicy(int *, unsigned long *, unsigned long, void *, unsigned
-		   long) */
+		/* get_mempolicy(int *, unsigned long *, unsigned long, void *, unsigned long) */
 		{ 239,
 		  5,
 		  "get_mempolicy",
 		  { "%li", 8 },
 		  { { "%p", 8 }, { "%p", 8 }, { "%lu", 8 }, { "%p", 8 }, { "%lu", 8 } } },
 		/* mq_open(const char *, int, mode_t, struct mq_attr *) */
-		{ 240, 4, "mq_open", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 }, { "%u", 4 }, { "%p", 8 } } },
+		{ 240, 4, "mq_open", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 }, { "%u", 4 }, { "%p", 8 } } },
 		/* mq_unlink(const char *) */
-		{ 241, 1, "mq_unlink", { "%i", 4 }, { { "%s", 8 } } },
-		/* mq_timedsend(mqd_t, const char *, int, unsigned int, const struct
-		   timespec *) */
-		{ 242, 5, "mq_timedsend", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%u", 4 }, { "%p", 8 } } },
-		/* mq_timedreceive(mqd_t, char *, int, unsigned int *, const struct
-		   timespec *) */
+		{ 241, 1, "mq_unlink", { "%i", 4 }, { { "\"%s\"", 8 } } },
+		/* mq_timedsend(mqd_t, const char *, int, unsigned int, const struct timespec *) */
+		{ 242,
+		  5,
+		  "mq_timedsend",
+		  { "%i", 4 },
+		  { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%u", 4 }, { "%p", 8 } } },
+		/* mq_timedreceive(mqd_t, char *, int, unsigned int *, const struct timespec *) */
 		{ 243,
 		  5,
 		  "mq_timedreceive",
 		  { "%li", 8 },
-		  { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
+		  { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
 		/* mq_notify(mqd_t, const struct sigevent *) */
 		{ 244, 2, "mq_notify", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
 		/* mq_getsetattr(mqd_t, const struct mq_attr *, struct mq_attr *) */
 		{ 245, 3, "mq_getsetattr", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
-		/* kexec_load(unsigned long, unsigned long, struct kexec_segment *,
-		   unsigned long) */
+		/* kexec_load(unsigned long, unsigned long, struct kexec_segment *, unsigned long) */
 		{ 246, 4, "kexec_load", { "%li", 8 }, { { "%lu", 8 }, { "%lu", 8 }, { "%p", 8 }, { "%lu", 8 } } },
 		/* waitid(idtype_t, id_t, siginfo_t *, int) */
 		{ 247, 4, "waitid", { "%i", 4 }, { { "%d", 4 }, { "%u", 4 }, { "%p", 8 }, { "%i", 4 } } },
 		/* add_key(const char *, const char *, const void *, int, int) */
-		{ 248, 5, "add_key", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
+		{ 248, 5, "add_key", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 } } },
 		/* request_key(const char *, const char *, const char *, int) */
-		{ 249, 4, "request_key", { "%i", 4 }, { { "%s", 8 }, { "%s", 8 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 249, 4, "request_key", { "%i", 4 }, { { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* keyctl(int, ...) */
 		{ 250, 1, "keyctl", { "%li", 8 }, { { "%i", 4 } } },
 		/* ioprio_set(int, int, int) */
@@ -557,47 +565,44 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* inotify_init() */
 		{ 253, 0, "inotify_init", { "%i", 4 }, {} },
 		/* inotify_add_watch(int, const char *, uint32_t) */
-		{ 254, 3, "inotify_add_watch", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%u", 4 } } },
+		{ 254, 3, "inotify_add_watch", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%u", 4 } } },
 		/* inotify_rm_watch(int, int) */
 		{ 255, 2, "inotify_rm_watch", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 } } },
-		/* migrate_pages(int, unsigned long, const unsigned long *, const
-		   unsigned long *) */
+		/* migrate_pages(int, unsigned long, const unsigned long *, const unsigned long *) */
 		{ 256, 4, "migrate_pages", { "%li", 8 }, { { "%i", 4 }, { "%lu", 8 }, { "%p", 8 }, { "%p", 8 } } },
 		/* openat(int, const char *, int, mode_t) */
-		{ 257, 4, "openat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%u", 4 } } },
+		{ 257, 4, "openat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%u", 4 } } },
 		/* mkdirat(int, const char *, mode_t) */
-		{ 258, 3, "mkdirat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%u", 4 } } },
+		{ 258, 3, "mkdirat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%u", 4 } } },
 		/* mknodat(int, const char *, mode_t, dev_t) */
-		{ 259, 4, "mknodat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%u", 4 }, { "%lu", 8 } } },
+		{ 259, 4, "mknodat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%u", 4 }, { "%lu", 8 } } },
 		/* fchownat(int, const char *, uid_t, gid_t, int) */
-		{ 260, 5, "fchownat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%u", 4 }, { "%u", 4 }, { "%i", 4 } } },
+		{ 260, 5, "fchownat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%u", 4 }, { "%u", 4 }, { "%i", 4 } } },
 		/* futimesat(int, const char *, const struct timeval *) */
-		{ 261, 3, "futimesat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 32 } } },
+		{ 261, 3, "futimesat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 32 } } },
 		/* newfstatat(int, const char *, struct stat *, int) */
-		{ 262, 4, "newfstatat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		{ 262, 4, "newfstatat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* unlinkat(int, const char *, int) */
-		{ 263, 3, "unlinkat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 263, 3, "unlinkat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* renameat(int, const char *, int, const char *) */
-		{ 264, 4, "renameat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%s", 8 } } },
+		{ 264, 4, "renameat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "\"%s\"", 8 } } },
 		/* linkat(int, const char *, int, const char *, int) */
-		{ 265, 5, "linkat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 265, 5, "linkat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* symlinkat(const char *, int, const char *) */
-		{ 266, 3, "symlinkat", { "%i", 4 }, { { "%s", 8 }, { "%i", 4 }, { "%s", 8 } } },
+		{ 266, 3, "symlinkat", { "%i", 4 }, { { "\"%s\"", 8 }, { "%i", 4 }, { "\"%s\"", 8 } } },
 		/* readlinkat(int, const char *, char *, int) */
-		{ 267, 4, "readlinkat", { "%li", 8 }, { { "%i", 4 }, { "%s", 8 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 267, 4, "readlinkat", { "%li", 8 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* fchmodat(int, const char *, mode_t, int) */
-		{ 268, 4, "fchmodat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%u", 4 }, { "%i", 4 } } },
+		{ 268, 4, "fchmodat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%u", 4 }, { "%i", 4 } } },
 		/* faccessat(int, const char *, int, int) */
-		{ 269, 4, "faccessat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%i", 4 } } },
-		/* pselect6(int, fd_set *, fd_set *, fd_set *, struct __kernel_timespec
-		 *, void *) */
+		{ 269, 4, "faccessat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%i", 4 } } },
+		/* pselect6(int, fd_set *, fd_set *, fd_set *, struct __kernel_timespec *, void *) */
 		{ 270,
 		  6,
 		  "pselect6",
 		  { "%i", 4 },
 		  { { "%i", 4 }, { "%p", 8 }, { "%p", 8 }, { "%p", 8 }, { "%p", 8 }, { "%p", 8 } } },
-		/* ppoll(struct pollfd *, nfds_t, const struct timespec *, const
-		   sigset_t *) */
+		/* ppoll(struct pollfd *, nfds_t, const struct timespec *, const sigset_t *) */
 		{ 271, 4, "ppoll", { "%i", 4 }, { { "%p", 8 }, { "%lu", 8 }, { "%p", 8 }, { "%p", 8 } } },
 		/* unshare(int) */
 		{ 272, 1, "unshare", { "%i", 4 }, { { "%i", 4 } } },
@@ -624,7 +629,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		  { "%li", 8 },
 		  { { "%i", 4 }, { "%lu", 8 }, { "%p", 8 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* utimensat(int, const char *, const struct timespec *, int) */
-		{ 280, 4, "utimensat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 32 }, { "%i", 4 } } },
+		{ 280, 4, "utimensat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 32 }, { "%i", 4 } } },
 		/* epoll_pwait(int, struct epoll_event *, int, int, const sigset_t *) */
 		{ 281, 5, "epoll_pwait", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%i", 4 }, { "%i", 4 }, { "%p", 8 } } },
 		/* signalfd(int, const sigset_t *, int) */
@@ -635,8 +640,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 284, 2, "eventfd", { "%i", 4 }, { { "%u", 4 }, { "%i", 4 } } },
 		/* fallocate(int, int, off_t, off_t) */
 		{ 285, 4, "fallocate", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%li", 8 }, { "%li", 8 } } },
-		/* timerfd_settime(int, int, const struct itimerspec *, struct
-		   itimerspec *) */
+		/* timerfd_settime(int, int, const struct itimerspec *, struct itimerspec *) */
 		{ 286, 4, "timerfd_settime", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%p", 8 }, { "%p", 8 } } },
 		/* timerfd_gettime(int, struct itimerspec *) */
 		{ 287, 2, "timerfd_gettime", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 } } },
@@ -660,30 +664,30 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 296, 4, "pwritev", { "%li", 8 }, { { "%i", 4 }, { "%p", 8 }, { "%i", 4 }, { "%li", 8 } } },
 		/* rt_tgsigqueueinfo(pid_t, pid_t, int, siginfo_t *) */
 		{ 297, 4, "rt_tgsigqueueinfo", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%i", 4 }, { "%p", 8 } } },
-		/* perf_event_open(struct perf_event_attr *, pid_t, int, int, unsigned
-		   long) */
+		/* perf_event_open(struct perf_event_attr *, pid_t, int, int, unsigned long) */
 		{ 298,
 		  5,
 		  "perf_event_open",
 		  { "%i", 4 },
 		  { { "%p", 8 }, { "%i", 4 }, { "%i", 4 }, { "%i", 4 }, { "%lu", 8 } } },
-		/* recvmmsg(int, struct mmsghdr *, unsigned int, int, struct timespec *)
-		 */
+		/* recvmmsg(int, struct mmsghdr *, unsigned int, int, struct timespec *) */
 		{ 299, 5, "recvmmsg", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%u", 4 }, { "%i", 4 }, { "%p", 8 } } },
 		/* fanotify_init(unsigned int, unsigned int) */
 		{ 300, 2, "fanotify_init", { "%i", 4 }, { { "%u", 4 }, { "%u", 4 } } },
 		/* fanotify_mark(int, unsigned int, uint64_t, int, const char *) */
-		{ 301, 5, "fanotify_mark", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 }, { "%lu", 8 }, { "%i", 4 }, { "%s", 8 } } },
-		/* prlimit64(pid_t, unsigned int, const struct rlimit64 *, struct
-		   rlimit64 *) */
+		{ 301,
+		  5,
+		  "fanotify_mark",
+		  { "%i", 4 },
+		  { { "%i", 4 }, { "%u", 4 }, { "%lu", 8 }, { "%i", 4 }, { "\"%s\"", 8 } } },
+		/* prlimit64(pid_t, unsigned int, const struct rlimit64 *, struct rlimit64 *) */
 		{ 302, 4, "prlimit64", { "%i", 4 }, { { "%i", 4 }, { "%u", 4 }, { "%p", 8 }, { "%p", 8 } } },
-		/* name_to_handle_at(int, const char *, struct file_handle *, int *,
-		   int) */
+		/* name_to_handle_at(int, const char *, struct file_handle *, int *, int) */
 		{ 303,
 		  5,
 		  "name_to_handle_at",
 		  { "%i", 4 },
-		  { { "%i", 4 }, { "%s", 8 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		  { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* open_by_handle_at(int, struct file_handle *, int) */
 		{ 304, 3, "open_by_handle_at", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%i", 4 } } },
 		/* clock_adjtime(clockid_t, struct timex *) */
@@ -696,15 +700,15 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 308, 2, "setns", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 } } },
 		/* getcpu(unsigned int *, unsigned int *, struct getcpu_cache *) */
 		{ 309, 3, "getcpu", { "%i", 4 }, { { "%p", 8 }, { "%p", 8 }, { "%p", 8 } } },
-		/* process_vm_readv(pid_t, const struct iovec *, unsigned long, const
-		   struct iovec *, unsigned long, unsigned long) */
+		/* process_vm_readv(pid_t, const struct iovec *, unsigned long, const struct iovec *, unsigned long, unsigned
+		   long) */
 		{ 310,
 		  6,
 		  "process_vm_readv",
 		  { "%i", 4 },
 		  { { "%i", 4 }, { "%p", 8 }, { "%lu", 8 }, { "%p", 8 }, { "%lu", 8 }, { "%lu", 8 } } },
-		/* process_vm_writev(pid_t, const struct iovec *, unsigned long, const
-		   struct iovec *, unsigned long, unsigned long) */
+		/* process_vm_writev(pid_t, const struct iovec *, unsigned long, const struct iovec *, unsigned long, unsigned
+		   long) */
 		{ 311,
 		  6,
 		  "process_vm_writev",
@@ -713,31 +717,33 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* kcmp(pid_t, pid_t, int, unsigned long, unsigned long) */
 		{ 312, 5, "kcmp", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%i", 4 }, { "%lu", 8 }, { "%lu", 8 } } },
 		/* finit_module(int, const char *, int) */
-		{ 313, 3, "finit_module", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 } } },
+		{ 313, 3, "finit_module", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 } } },
 		/* sched_setattr(pid_t, struct sched_attr *, unsigned int) */
 		{ 314, 3, "sched_setattr", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%u", 4 } } },
-		/* sched_getattr(pid_t, struct sched_attr *, unsigned int, unsigned int)
-		 */
+		/* sched_getattr(pid_t, struct sched_attr *, unsigned int, unsigned int) */
 		{ 315, 4, "sched_getattr", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%u", 4 }, { "%u", 4 } } },
 		/* renameat2(int, const char *, int, const char *, unsigned int) */
-		{ 316, 5, "renameat2", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%s", 8 }, { "%u", 4 } } },
+		{ 316,
+		  5,
+		  "renameat2",
+		  { "%i", 4 },
+		  { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "\"%s\"", 8 }, { "%u", 4 } } },
 		/* seccomp(unsigned int, unsigned int, void *) */
 		{ 317, 3, "seccomp", { "%i", 4 }, { { "%u", 4 }, { "%u", 4 }, { "%p", 8 } } },
 		/* getrandom(void *, int, unsigned int) */
 		{ 318, 3, "getrandom", { "%li", 8 }, { { "%p", 8 }, { "%i", 4 }, { "%u", 4 } } },
 		/* memfd_create(const char *, unsigned int) */
-		{ 319, 2, "memfd_create", { "%i", 4 }, { { "%s", 8 }, { "%u", 4 } } },
-		/* kexec_file_load(int, int, unsigned long, const char *, unsigned long)
-		 */
+		{ 319, 2, "memfd_create", { "%i", 4 }, { { "\"%s\"", 8 }, { "%u", 4 } } },
+		/* kexec_file_load(int, int, unsigned long, const char *, unsigned long) */
 		{ 320,
 		  5,
 		  "kexec_file_load",
 		  { "%li", 8 },
-		  { { "%i", 4 }, { "%i", 4 }, { "%lu", 8 }, { "%s", 8 }, { "%lu", 8 } } },
+		  { { "%i", 4 }, { "%i", 4 }, { "%lu", 8 }, { "\"%s\"", 8 }, { "%lu", 8 } } },
 		/* bpf(int, union bpf_attr *, unsigned int) */
 		{ 321, 3, "bpf", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%u", 4 } } },
 		/* execveat(int, const char *, char *const *, char *const *, int) */
-		{ 322, 5, "execveat", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		{ 322, 5, "execveat", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* userfaultfd(int) */
 		{ 323, 1, "userfaultfd", { "%i", 4 }, { { "%i", 4 } } },
 		/* membarrier(int, unsigned int, int) */
@@ -761,9 +767,10 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* pkey_free(int) */
 		{ 331, 1, "pkey_free", { "%i", 4 }, { { "%i", 4 } } },
 		/* statx(int, const char *, int, unsigned int, struct statx *) */
-		{ 332, 5, "statx", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%u", 4 }, { "%p", 8 } } },
+		{ 332, 5, "statx", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%u", 4 }, { "%p", 8 } } },
 		{ 0 },
-		{ 0 },
+		/* rseq(struct rseq *, uint32_t, int, int32_t) */
+		{ 334, 4, "rseq", { "%i", 4 }, { { "%p", 8 }, { "%u", 4 }, { "%i", 4 }, { "%i", 4 } } },
 		{ 0 },
 		{ 0 },
 		{ 0 },
@@ -870,12 +877,14 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		{ 435, 2, "clone3", { "%li", 8 }, { { "%p", 8 }, { "%i", 4 } } },
 		{ 0 },
 		/* openat2(int, const char *, struct open_how *, int) */
-		{ 437, 4, "openat2", { "%li", 8 }, { { "%i", 4 }, { "%s", 8 }, { "%p", 8 }, { "%i", 4 } } },
+		{ 437, 4, "openat2", { "%li", 8 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* pidfd_getfd(int, int, unsigned int) */
 		{ 438, 3, "pidfd_getfd", { "%i", 4 }, { { "%i", 4 }, { "%i", 4 }, { "%u", 4 } } },
 		/* faccessat2(int, const char *, int, int) */
-		{ 439, 4, "faccessat2", { "%i", 4 }, { { "%i", 4 }, { "%s", 8 }, { "%i", 4 }, { "%i", 4 } } },
+		{ 439, 4, "faccessat2", { "%i", 4 }, { { "%i", 4 }, { "\"%s\"", 8 }, { "%i", 4 }, { "%i", 4 } } },
 	};
 
 	return &syscalls[nr];
 }
+
+const size_t syscall_max = 440;

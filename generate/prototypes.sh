@@ -25,6 +25,7 @@ exceptions[290]="int eventfd2(unsigned int count, int flags);"
 exceptions[302]="int prlimit64(pid_t pid, unsigned int resource, const struct rlimit64 *new_rlim, struct rlimit64 *old_rlim);"
 exceptions[310]="int process_vm_readv(pid_t pid, const struct iovec *lvec, unsigned long liovcnt, const struct iovec *rvec, unsigned long riovcnt, unsigned long flags);"
 exceptions[311]="int process_vm_writev(pid_t pid, const struct iovec *lvec, unsigned long liovcnt, const struct iovec *rvec, unsigned long riovcnt, unsigned long flags);"
+exceptions[334]="int rseq(struct rseq *rseq, uint32_t rseq_len, int flags, int32_t sig);"
 
 while read -r line; do
 	number=$(echo "$line" | cut -d ' ' -f3)

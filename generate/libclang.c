@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
 	CXCursor cursor = clang_getTranslationUnitCursor(unit);
 	
 	printf("#include \"syscall.h\"\n");
+	printf("#include <stddef.h>\n");
 	printf("\n");
 	printf("const t_syscall_prototype *syscall_get_prototype(int nr) {\n");
 	printf("\tstatic const t_syscall_prototype syscalls[] = {\n");
@@ -48,7 +49,7 @@ int main(int argc, char **argv) {
 	printf("}\n");
 
 	printf("\n");
-	printf("static const size_t syscall_max = %d;\n", data.current);
+	printf("const size_t syscall_max = %d;\n", data.current);
 }
 
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata) {
@@ -132,7 +133,7 @@ const char *get_format(CXType type) {
 		"%p",	// Pointer
 		"%d",	// Enum
 		"%p",	// ConstantArray
-		"%s",	// Pointer Char
+		"\\\"%s\\\"",	// Pointer Char
 	};
 
 	type = clang_getCanonicalType(type);

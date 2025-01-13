@@ -3,28 +3,42 @@
 #include "strace.h"
 #include "syscall.h"
 
-#include <sys/user.h>
+#include <elf.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ptrace.h>
 #include <sys/uio.h>
-#include <stdio.h>		// fprintf
-#include <stdlib.h>		// exit
-#include <string.h>		// strerror
-#include <sys/ptrace.h> // ptrace
-#include <sys/wait.h>	// waitpid
-#include <elf.h>		// NT_PRSTATUS
+#include <sys/user.h>
+#include <sys/wait.h>
 
 int trace(pid_t pid) {
 	t_syscall_info info	  = { 0 };
 	int			   status = 0;
 
-	struct user_regs_struct regs = { 0 };
-	struct iovec iov = { &regs, sizeof(regs) };
-	
+	siginfo_t				siginfo = { 0 };
+	struct user_regs_struct regs	= { 0 };
+	struct iovec			iov		= { &regs, sizeof(regs) };
+
+	void *addr = NULL;
+	void *data = NULL;
+
 	CHECK_SYSCALL(waitpid(pid, &status, 0));
 
 	while (1) {
 		// Continue until next syscall
-		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, NULL, NULL));
+		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, addr, data));
 		CHECK_SYSCALL(waitpid(pid, &status, 0));
+
+		addr = NULL;
+		data = NULL;
+
+		if ((WIFEXITED(status) || WIFSIGNALED(status) ||
+			(WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80))) && info.running) {
+			eprintf("?\n");
+			info.running = 0;
+		}
 
 		if (WIFEXITED(status)) {
 			on_tracee_exit(&info, status);
@@ -36,8 +50,13 @@ int trace(pid_t pid) {
 			break;
 		}
 
+		CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
+
 		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
-			on_tracee_stopped(&info, status);
+			on_tracee_stopped(&info, status, &siginfo);
+
+			// set data to signal to be delivered to tracee
+			data = (void *)(unsigned long)WSTOPSIG(status);
 		}
 
 		CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
@@ -55,35 +74,20 @@ int trace(pid_t pid) {
 }
 
 void on_syscall_start(t_syscall_info *info, struct user_regs_struct *regs) {
+	long args[] = {
+		regs->rdi, regs->rsi, regs->rdx, regs->rcx, regs->r8, regs->r9,
+	};
+
 	info->prototype = syscall_get_prototype(regs->orig_rax);
 
 	eprintf("%s(", info->prototype->name);
 
-	switch (info->prototype->argc) {
-		case 6:
-			eprintf("%llx", regs->r9);
+	for (int i = 0; i < info->prototype->argc; i++) {
+		eprintf(info->prototype->args[i].format, args[i]);
+
+		if (i < info->prototype->argc - 1) {
 			eprintf(", ");
-			__attribute__((fallthrough));
-		case 5:
-			eprintf("%llx", regs->r8);
-			eprintf(", ");
-			__attribute__((fallthrough));
-		case 4:
-			eprintf("%llx", regs->rcx);
-			eprintf(", ");
-			__attribute__((fallthrough));
-		case 3:
-			eprintf("%llx", regs->rdx);
-			eprintf(", ");
-			__attribute__((fallthrough));
-		case 2:
-			eprintf("%llx", regs->rsi);
-			eprintf(", ");
-			__attribute__((fallthrough));
-		case 1:
-			eprintf("%llx", regs->rdi);
-		default:
-			break;
+		}
 	}
 
 	eprintf(") = ");
@@ -109,19 +113,20 @@ void on_tracee_exit(t_syscall_info *info, int status) {
 	eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
 }
 
-void on_tracee_stopped(t_syscall_info *info, int status) {
+void on_tracee_stopped(t_syscall_info *info, int status, siginfo_t *siginfo) {
 	if (info->running) {
 		eprintf("?\n");
 	}
-	
-	eprintf("--- %s ---\n", getsigname(WSTOPSIG(status) & ~0x80));
+
+	const char *abbr = sigabbrev_np(WSTOPSIG(status) & ~0x80);
+
+	eprintf("--- SIG%s { si_signo = SIG%s, si_pid = %d } ---\n", abbr, abbr, siginfo->si_pid);
 }
 
 void on_tracee_signalled(t_syscall_info *info, int status) {
 	if (info->running) {
 		eprintf("?\n");
 	}
-	
-	eprintf("+++ terminated with %s +++\n", getsigname(WTERMSIG(status)));
-}
 
+	eprintf("+++ terminated with SIG%s +++\n", sigabbrev_np(WTERMSIG(status)));
+}

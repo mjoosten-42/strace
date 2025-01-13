@@ -4,7 +4,7 @@
 #include <sys/ptrace.h>
 
 typedef struct s_syscall_arg {
-	char format[4];
+	char format[8];
 	int	 size;
 } t_syscall_arg;
 
