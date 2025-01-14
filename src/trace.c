@@ -3,6 +3,7 @@
 #include "strace.h"
 #include "syscall.h"
 
+#include <assert.h>
 #include <elf.h>
 #include <signal.h>
 #include <stdio.h>
@@ -57,16 +58,16 @@ int trace(pid_t pid) {
 
 			// set data to signal to be delivered to tracee
 			data = (void *)(unsigned long)WSTOPSIG(status);
-		}
-
-		CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
-
-		if (!info.running) {
-			on_syscall_start(&info, &regs);
-			info.running = 1;
 		} else {
-			on_syscall_end(&info, &regs);
-			info.running = 0;
+			CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
+
+			if (!info.running) {
+				on_syscall_start(&info, &regs);
+				info.running = 1;
+			} else {
+				on_syscall_end(&info, &regs);
+				info.running = 0;
+			}
 		}
 	}
 
@@ -118,9 +119,11 @@ void on_tracee_stopped(t_syscall_info *info, int status, siginfo_t *siginfo) {
 		eprintf("?\n");
 	}
 
-	const char *abbr = sigabbrev_np(WSTOPSIG(status) & ~0x80);
+	assert(WSTOPSIG(status) == siginfo->si_signo && "WSTOPSIG does not match siginfo->si_signo");
 
-	eprintf("--- SIG%s { si_signo = SIG%s, si_pid = %d } ---\n", abbr, abbr, siginfo->si_pid);
+	const char *abbr = sigabbrev_np(siginfo->si_signo);
+
+	eprintf("--- SIG%s { si_signo = SIG%s, si_code = %s } ---\n", abbr, abbr, siginfo->si_code <= 0 ? "SI_USER" : "SI_KERNEL");
 }
 
 void on_tracee_signalled(t_syscall_info *info, int status) {
@@ -128,5 +131,11 @@ void on_tracee_signalled(t_syscall_info *info, int status) {
 		eprintf("?\n");
 	}
 
-	eprintf("+++ terminated with SIG%s +++\n", sigabbrev_np(WTERMSIG(status)));
+	eprintf("+++ killed by SIG%s ", sigabbrev_np(WTERMSIG(status)));
+	
+	if (WCOREDUMP(status)) {
+		eprintf("(core dumped) ");
+	}
+
+	eprintf("+++\n");
 }
