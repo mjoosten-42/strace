@@ -35,39 +35,48 @@ int trace(pid_t pid) {
 		addr = NULL;
 		data = NULL;
 
-		if ((WIFEXITED(status) || WIFSIGNALED(status) ||
-			(WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80))) && info.running) {
+		int signalled = !((WIFSTOPPED(status) && WSTOPSIG(status) & 0x80));
+
+		if (signalled && info.running) {
 			eprintf("?\n");
 			info.running = 0;
 		}
 
 		if (WIFEXITED(status)) {
-			on_tracee_exit(&info, status);
+			eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
 			break;
 		}
 
 		if (WIFSIGNALED(status)) {
-			on_tracee_signalled(&info, status);
+			eprintf("+++ killed by SIG%s %s+++\n",
+					sigabbrev_np(WTERMSIG(status)),
+					WCOREDUMP(status) ? "(core dumped) " : "");
 			break;
 		}
 
-		CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
-
 		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
-			on_tracee_stopped(&info, status, &siginfo);
+			CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
+
+			const char *abbr = sigabbrev_np(siginfo.si_signo);
+
+			eprintf("--- SIG%s { si_signo = SIG%s, si_code = %s } ---\n",
+				abbr,
+				abbr,
+				siginfo.si_code <= 0 ? "SI_USER" : "SI_KERNEL");
 
 			// set data to signal to be delivered to tracee
-			data = (void *)(unsigned long)WSTOPSIG(status);
+			data = (void *)(unsigned long)(WSTOPSIG(status) & ~0x80);
 		} else {
+			// read registers
 			CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
 
 			if (!info.running) {
 				on_syscall_start(&info, &regs);
-				info.running = 1;
 			} else {
 				on_syscall_end(&info, &regs);
-				info.running = 0;
 			}
+
+			info.running = !info.running;
 		}
 	}
 
@@ -98,44 +107,19 @@ void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {
 	long ret = regs->rax;
 
 	if (ret < 0) {
-		eprintf("%i %s (%s)", -1, strerrorname_np(-ret), strerror(-ret));
+		// kernel-only errors such as ERESTART
+		if (strerrorname_np(-ret) == NULL) {
+			eprintf("? ");
+		} else {
+			eprintf("%i ", -1);
+		}
+
+		eprintf("%s (%s)", strerrorname(-ret), strerrordesc(-ret));
 	} else {
 		eprintf(info->prototype->ret.format, ret);
 	}
 
 	eprintf("\n");
+	(void)info;
 }
 
-void on_tracee_exit(t_syscall_info *info, int status) {
-	if (info->running) {
-		eprintf("?\n");
-	}
-
-	eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
-}
-
-void on_tracee_stopped(t_syscall_info *info, int status, siginfo_t *siginfo) {
-	if (info->running) {
-		eprintf("?\n");
-	}
-
-	assert(WSTOPSIG(status) == siginfo->si_signo && "WSTOPSIG does not match siginfo->si_signo");
-
-	const char *abbr = sigabbrev_np(siginfo->si_signo);
-
-	eprintf("--- SIG%s { si_signo = SIG%s, si_code = %s } ---\n", abbr, abbr, siginfo->si_code <= 0 ? "SI_USER" : "SI_KERNEL");
-}
-
-void on_tracee_signalled(t_syscall_info *info, int status) {
-	if (info->running) {
-		eprintf("?\n");
-	}
-
-	eprintf("+++ killed by SIG%s ", sigabbrev_np(WTERMSIG(status)));
-	
-	if (WCOREDUMP(status)) {
-		eprintf("(core dumped) ");
-	}
-
-	eprintf("+++\n");
-}

@@ -1,10 +1,14 @@
 global _start
-global _handler
+global handler
+
+handler:
+	ret
 
 _start:
 	mov	rcx, rsp
 	sub	rsp, 48
-	mov	QWORD [rcx + 0],	_handler
+	lea	rdx, [handler]
+	mov	[rcx + 0], rdx
 	mov	QWORD [rcx + 8],	0
 	mov	QWORD [rcx + 16],	0
 	mov	QWORD [rcx + 24],	0
@@ -27,6 +31,3 @@ _start:
 	mov	rax, 60		; exit
 	mov	rdi, 0
 	syscall
-
-_handler:
-	ret

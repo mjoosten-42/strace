@@ -15,12 +15,17 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
+	const char *path = which(argv[1]);
+
+	if (!path) {
+		return EXIT_FAILURE;
+	}
+
 	CHECK_SYSCALL(pid = fork());
 
 	if (!pid) {
-		// TODO: path search before kill
 		CHECK_SYSCALL(kill(getpid(), SIGSTOP));
-		CHECK_SYSCALL(execvp(argv[1], argv + 1));
+		CHECK_SYSCALL(execv(path, argv + 1));
 	}
 
 	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD));

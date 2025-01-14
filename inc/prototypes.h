@@ -91,7 +91,7 @@
 /**   9 */ void		*mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 /**  10 */ int			mprotect(void *addr, size_t len, int prot);
 /**  11 */ int			munmap(void *addr, size_t length);
-/**  12 */ int			brk(void *addr);
+/**  12 */ void		*brk(void *addr);
 /**  13 */ int			rt_sigaction(int, const struct sigaction *, struct sigaction *, size_t);
 /**  14 */ int			rt_sigprocmask(int, const sigset_t *, sigset_t *, size_t);
 /**  15 */ int			rt_sigreturn(...);

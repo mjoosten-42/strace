@@ -33,7 +33,7 @@ const t_syscall_prototype *syscall_get_prototype(int nr) {
 		/* munmap(void *, int) */
 		{ 11, 2, "munmap", { "%i", 4 }, { { "%p", 8 }, { "%i", 4 } } },
 		/* brk(void *) */
-		{ 12, 1, "brk", { "%i", 4 }, { { "%p", 8 } } },
+		{ 12, 1, "brk", { "%p", 8 }, { { "%p", 8 } } },
 		/* rt_sigaction(int, const struct sigaction *, struct sigaction *, int) */
 		{ 13, 4, "rt_sigaction", { "%i", 4 }, { { "%i", 4 }, { "%p", 8 }, { "%p", 8 }, { "%i", 4 } } },
 		/* rt_sigprocmask(int, const sigset_t *, sigset_t *, int) */

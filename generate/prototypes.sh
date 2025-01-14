@@ -4,6 +4,7 @@ systemheader="/usr/include/x86_64-linux-gnu/asm/unistd_64.h"
 headers=""
 prototypes=()
 exceptions=()
+exceptions[ 12]="void *brk(void *addr);"
 exceptions[ 13]="int rt_sigaction(int, const struct sigaction *, struct sigaction *, size_t);"
 exceptions[ 14]="int rt_sigprocmask(int, const sigset_t *, sigset_t *, size_t);"
 exceptions[ 15]="int rt_sigreturn(...);"
