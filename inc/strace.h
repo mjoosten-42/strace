@@ -4,7 +4,6 @@
 #include "syscall.h"
 
 #include <signal.h>
-#include <stdio.h>
 #include <sys/user.h>
 #include <unistd.h>
 
