@@ -74,7 +74,7 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 		CXType proto = clang_getCursorType(cursor);
 		int argc = clang_Cursor_getNumArguments(cursor);
 
-		printf("\t\t/* %s */\n", clang_getCString(display));	// prototype
+		//printf("\t\t/* %s */\n", clang_getCString(display));	// prototype
 
 		// general info
 		printf("\t\t{ ");
@@ -149,14 +149,7 @@ const char *get_format(CXType type) {
 			return formats[3];
 		case CXType_Pointer:
 		case CXType_IncompleteArray:
-			pointee = clang_getPointeeType(type);
-
-			switch (pointee.kind) {
-				case CXType_Char_S:
-					return formats[7];
-				default:
-					return formats[4];
-			};
+			return formats[4];
 		case CXType_Enum:
 			return formats[5];
 		case CXType_ConstantArray:
