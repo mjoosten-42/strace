@@ -21,6 +21,7 @@ int trace(pid_t pid) {
 	siginfo_t				siginfo = { 0 };
 	struct user_regs_struct regs	= { 0 };
 	struct iovec			iov		= { &regs, sizeof(regs) };
+	//struct __ptrace_syscall_info sinfo = { 0 };
 
 	void *addr = NULL;
 	void *data = NULL;
@@ -69,6 +70,19 @@ int trace(pid_t pid) {
 		} else {
 			// read registers
 			CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
+			/*
+			CHECK_SYSCALL(ptrace(PTRACE_GET_SYSCALL_INFO, pid, sizeof(sinfo), &sinfo));
+			regs = (struct user_regs_struct){
+				.rax = sinfo.exit.rval,
+				.orig_rax = sinfo.entry.nr,
+				.rdi = sinfo.entry.args[0],
+				.rsi = sinfo.entry.args[1],
+				.rdx = sinfo.entry.args[2],
+				.rcx = sinfo.entry.args[3],
+				.r8  = sinfo.entry.args[4],
+				.r9  = sinfo.entry.args[5],
+			};
+			*/
 
 			if (!info.running) {
 				on_syscall_start(&info, &regs);
@@ -107,7 +121,8 @@ void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {
 	long ret = regs->rax;
 
 	if (ret < 0) {
-		// kernel-only errors such as ERESTART
+		// kernel-only errors such as ERESTART do not have a corresponding user
+		// error string.
 		if (strerrorname_np(-ret) == NULL) {
 			eprintf("? ");
 		} else {
@@ -120,6 +135,5 @@ void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {
 	}
 
 	eprintf("\n");
-	(void)info;
 }
 
