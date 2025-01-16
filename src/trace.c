@@ -60,9 +60,9 @@ int trace(pid_t pid) {
 			const char *abbr = sigabbrev_np(siginfo.si_signo);
 
 			eprintf("--- SIG%s { si_signo = SIG%s, si_code = %s } ---\n",
-				abbr,
-				abbr,
-				siginfo.si_code <= 0 ? "SI_USER" : "SI_KERNEL");
+					abbr,
+					abbr,
+					siginfo.si_code <= 0 ? "SI_USER" : "SI_KERNEL");
 
 			// set data to signal to be delivered to tracee
 			data = (void *)(unsigned long)(WSTOPSIG(status) & ~0x80);
@@ -122,4 +122,3 @@ void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {
 
 	eprintf("\n");
 }
-
