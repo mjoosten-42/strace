@@ -2,6 +2,8 @@
 
 #include "strace.h"
 
+#include <errno.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ptrace.h>
@@ -18,8 +20,10 @@ int main(int argc, char **argv) {
 	const char *path = which(argv[1]);
 
 	if (!path) {
+		eprintf("%s: Can't stat '%s': %s\n", basename(argv[0]), argv[1], strerror(errno));
 		return EXIT_FAILURE;
 	}
+
 
 	CHECK_SYSCALL(pid = fork());
 

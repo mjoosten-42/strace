@@ -4,17 +4,16 @@
 !_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
 !_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
 !_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
-!_TAG_PROC_CWD	/home/mjoosten/Desktop/strace/	//
+!_TAG_PROC_CWD	/home/maarten/strace/	//
 !_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
 !_TAG_PROGRAM_VERSION	5.9.0	//
 CHECK_SYSCALL	inc/strace.h	/^#define CHECK_SYSCALL(/;"	d
-ERESTARTNOHAND	src/errno.c	/^#  define ERESTARTNOHAND	/;"	d	file:
-ERESTARTNOINTR	src/errno.c	/^#  define ERESTARTNOINTR	/;"	d	file:
-ERESTARTSYS	src/errno.c	/^#  define ERESTARTSYS	/;"	d	file:
-ERESTART_RESTARTBLOCK	src/errno.c	/^#  define ERESTART_RESTARTBLOCK /;"	d	file:
-LOG	src/trace.c	/^#define LOG(/;"	d	file:
+ERESTARTNOHAND	src/errno.c	/^	#define ERESTARTNOHAND /;"	d	file:
+ERESTARTNOINTR	src/errno.c	/^	#define ERESTARTNOINTR /;"	d	file:
+ERESTARTSYS	src/errno.c	/^	#define ERESTARTSYS /;"	d	file:
+ERESTART_RESTARTBLOCK	src/errno.c	/^	#define ERESTART_RESTARTBLOCK /;"	d	file:
 STRACE_H	inc/strace.h	/^#define STRACE_H$/;"	d
 SYSCALL_H	inc/syscall.h	/^#define SYSCALL_H$/;"	d
 _GNU_SOURCE	src/errno.c	/^#define _GNU_SOURCE$/;"	d	file:
@@ -29,8 +28,6 @@ name	inc/syscall.h	/^	char		  name[32];$/;"	m	struct:s_syscall_prototype	typeref
 nr	inc/syscall.h	/^	int			  nr;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
 on_syscall_end	src/trace.c	/^void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {$/;"	f	typeref:typename:void
 on_syscall_start	src/trace.c	/^void on_syscall_start(t_syscall_info *info, struct user_regs_struct *regs) {$/;"	f	typeref:typename:void
-on_tracee_signalled	src/trace.c	/^void on_tracee_signalled(t_syscall_info *info, int status) {$/;"	f	typeref:typename:void
-on_tracee_stopped	src/trace.c	/^void on_tracee_stopped(t_syscall_info *info, int status, siginfo_t *siginfo) {$/;"	f	typeref:typename:void
 prototype	inc/syscall.h	/^	const t_syscall_prototype	  *prototype;$/;"	m	struct:s_syscall_info	typeref:typename:const t_syscall_prototype *
 ret	inc/syscall.h	/^	t_syscall_arg ret;$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg
 running	inc/syscall.h	/^	unsigned int				 running : 1;$/;"	m	struct:s_syscall_info	typeref:typename:unsigned int:1
@@ -47,3 +44,4 @@ t_syscall_info	inc/syscall.h	/^} t_syscall_info;$/;"	t	typeref:struct:s_syscall_
 t_syscall_prototype	inc/syscall.h	/^} t_syscall_prototype;$/;"	t	typeref:struct:s_syscall_prototype
 trace	src/trace.c	/^int trace(pid_t pid) {$/;"	f	typeref:typename:int
 values	inc/syscall.h	/^	struct __ptrace_syscall_info values;$/;"	m	struct:s_syscall_info	typeref:struct:__ptrace_syscall_info
+which	src/which.c	/^const char *which(const char *filename) {$/;"	f	typeref:typename:const char *
