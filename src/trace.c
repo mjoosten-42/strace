@@ -17,6 +17,7 @@
 int trace(pid_t pid) {
 	t_syscall_info info	  = { 0 };
 	int			   status = 0;
+    e_arch         arch = X64;
 
 	siginfo_t				siginfo = { 0 };
 	struct user_regs_struct regs	= { 0 };
@@ -28,6 +29,8 @@ int trace(pid_t pid) {
 	CHECK_SYSCALL(waitpid(pid, &status, 0));
 
 	while (1) {
+        iov.iov_len = sizeof(regs);
+
 		// Continue until next syscall
 		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, addr, data));
 		CHECK_SYSCALL(waitpid(pid, &status, 0));
@@ -59,22 +62,36 @@ int trace(pid_t pid) {
 
 			const char *abbr = sigabbrev_np(siginfo.si_signo);
 
-			eprintf("--- SIG%s { si_signo = SIG%s, si_code = %s } ---\n",
-					abbr,
-					abbr,
-					siginfo.si_code <= 0 ? "SI_USER" : "SI_KERNEL");
+			eprintf("--- SIG%s { si_signo = SIG%s", abbr, abbr);
+
+			if (siginfo.si_code > 0) {
+				eprintf(", si_code = SI_KERNEL");
+			} else {
+				eprintf(", si_code = SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
+			}
+
+			eprintf(" } ---\n");
 
 			// set data to signal to be delivered to tracee
-			data = (void *)(unsigned long)(WSTOPSIG(status) & ~0x80);
+			data = (void *)(long)(WSTOPSIG(status) & ~0x80);
 		} else {
 			// read registers
 			CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
-
-			if (!info.running) {
+			
+            if (!info.running) {
 				on_syscall_start(&info, &regs);
 			} else {
 				on_syscall_end(&info, &regs);
 			}
+            
+            e_arch cur_arch = (iov.iov_len == sizeof(struct user_regs_struct) ? X64 : X32);
+
+            if (cur_arch != arch) {
+                arch = cur_arch;
+
+                eprintf("[ Process PID = %i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
+            }
+
 
 			info.running = !info.running;
 		}

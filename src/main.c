@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
 		CHECK_SYSCALL(execv(path, argv + 1));
 	}
 
-	eprintf("parent: %d\n", getpid());
-	eprintf("child:  %d\n", pid);
+	// eprintf("parent: %d\n", getpid());
+	// eprintf("child:  %d\n", pid);
 
 	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD));
 
