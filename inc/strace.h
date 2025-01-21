@@ -1,6 +1,7 @@
 #ifndef STRACE_H
 #define STRACE_H
 
+#include "arch.h"
 #include "syscall.h"
 
 #include <errno.h>
@@ -29,15 +30,10 @@
 		}                    \
 	} while (0)
 
-typedef enum {
-	X32,
-	X64,
-} e_arch;
-
 int trace(pid_t pid_t);
 
-void on_syscall_start(t_syscall_info *info, struct user_regs_struct *regs);
-void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs);
+void on_syscall_start(t_syscall_info *info, const u_regs *regs);
+void on_syscall_end(t_syscall_info *info, const u_regs *regs);
 
 const char *strerrorname(int error);
 const char *strerrordesc(int error);

@@ -1,5 +1,6 @@
 #define _GNU_SOURCE // strerrorname_np
 
+#include "arch.h"
 #include "strace.h"
 #include "syscall.h"
 
@@ -17,11 +18,11 @@
 int trace(pid_t pid) {
 	t_syscall_info info	  = { 0 };
 	int			   status = 0;
-    e_arch         arch = X64;
+	e_arch		   arch	  = X64;
 
-	siginfo_t				siginfo = { 0 };
-	struct user_regs_struct regs	= { 0 };
-	struct iovec			iov		= { &regs, sizeof(regs) };
+	siginfo_t siginfo = { 0 };
+	u_regs	  regs	  = { 0 };
+	struct iovec iov = { &regs.x86_64, sizeof(regs) };
 
 	void *addr = NULL;
 	void *data = NULL;
@@ -29,7 +30,7 @@ int trace(pid_t pid) {
 	CHECK_SYSCALL(waitpid(pid, &status, 0));
 
 	while (1) {
-        iov.iov_len = sizeof(regs);
+		iov.iov_len = sizeof(regs);
 
 		// Continue until next syscall
 		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, addr, data));
@@ -77,21 +78,20 @@ int trace(pid_t pid) {
 		} else {
 			// read registers
 			CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
-			
-            if (!info.running) {
+
+			regs.arch = (iov.iov_len == sizeof(regs.x86_64) ? X64 : X32);
+
+			if (!info.running) {
 				on_syscall_start(&info, &regs);
 			} else {
 				on_syscall_end(&info, &regs);
 			}
-            
-            e_arch cur_arch = (iov.iov_len == sizeof(struct user_regs_struct) ? X64 : X32);
 
-            if (cur_arch != arch) {
-                arch = cur_arch;
+			if (regs.arch != arch) {
+				arch = regs.arch;
 
-                eprintf("[ Process PID = %i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
-            }
-
+				eprintf("[ Process PID = %i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
+			}
 
 			info.running = !info.running;
 		}
@@ -100,12 +100,32 @@ int trace(pid_t pid) {
 	return WEXITSTATUS(status);
 }
 
-void on_syscall_start(t_syscall_info *info, struct user_regs_struct *regs) {
-	long args[] = {
-		regs->rdi, regs->rsi, regs->rdx, regs->rcx, regs->r8, regs->r9,
+void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
+	long nr		 = 0;
+	long args[6] = { 0 };
+
+	switch (regs->arch) {
+		case X64:
+			nr		= regs->x86_64.orig_rax;
+			args[0] = regs->x86_64.rdi;
+			args[1] = regs->x86_64.rsi;
+			args[2] = regs->x86_64.rdx;
+			args[3] = regs->x86_64.rcx;
+			args[4] = regs->x86_64.r8;
+			args[5] = regs->x86_64.r9;
+			break;
+		case X32:
+			nr		= regs->x86.orig_eax;
+			args[0] = regs->x86.ebx;
+			args[1] = regs->x86.ecx;
+			args[2] = regs->x86.edx;
+			args[3] = regs->x86.esi;
+			args[4] = regs->x86.edi;
+			args[5] = regs->x86.ebp;
+			break;
 	};
 
-	info->prototype = syscall_get_prototype(regs->orig_rax);
+	info->prototype = syscall_get_prototype(nr);
 
 	eprintf("%s(", info->prototype->name);
 
@@ -120,8 +140,17 @@ void on_syscall_start(t_syscall_info *info, struct user_regs_struct *regs) {
 	eprintf(") = ");
 }
 
-void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {
-	long ret = regs->rax;
+void on_syscall_end(t_syscall_info *info, const u_regs *regs) {
+	long ret = 0;
+
+	switch (regs->arch) {
+		case X64:
+			ret = regs->x86_64.rax;
+			break;
+		case X32:
+			ret = regs->x86.eax;
+			break;
+	};
 
 	if (ret < 0) {
 		// kernel-only errors such as ERESTART do not have a corresponding user

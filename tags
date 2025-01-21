@@ -4,7 +4,7 @@
 !_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
 !_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
 !_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
-!_TAG_PROC_CWD	/home/maarten/strace/	//
+!_TAG_PROC_CWD	/home/mjoosten/Desktop/strace/	//
 !_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
@@ -14,15 +14,12 @@ ERESTARTNOHAND	src/errno.c	/^	#define ERESTARTNOHAND /;"	d	file:
 ERESTARTNOINTR	src/errno.c	/^	#define ERESTARTNOINTR /;"	d	file:
 ERESTARTSYS	src/errno.c	/^	#define ERESTARTSYS /;"	d	file:
 ERESTART_RESTARTBLOCK	src/errno.c	/^	#define ERESTART_RESTARTBLOCK /;"	d	file:
+ONCE	inc/strace.h	/^#define ONCE(/;"	d
 STRACE_H	inc/strace.h	/^#define STRACE_H$/;"	d
 SYSCALL_H	inc/syscall.h	/^#define SYSCALL_H$/;"	d
-X32	inc/strace.h	/^	X32,$/;"	e	enum:__anonc12e58c60103
-X64	inc/strace.h	/^	X64,$/;"	e	enum:__anonc12e58c60103
 _GNU_SOURCE	src/errno.c	/^#define _GNU_SOURCE$/;"	d	file:
 _GNU_SOURCE	src/main.c	/^#define _GNU_SOURCE$/;"	d	file:
 _GNU_SOURCE	src/trace.c	/^#define _GNU_SOURCE /;"	d	file:
-__anonc12e58c60103	inc/strace.h	/^typedef enum {$/;"	g
-arch	inc/strace.h	/^} arch;$/;"	t	typeref:enum:__anonc12e58c60103
 argc	inc/syscall.h	/^	int			  argc;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
 args	inc/syscall.h	/^	t_syscall_arg args[6];$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg[6]
 eprintf	inc/strace.h	/^#define eprintf(/;"	d
@@ -38,7 +35,6 @@ running	inc/syscall.h	/^	unsigned int				 running : 1;$/;"	m	struct:s_syscall_in
 s_syscall_arg	inc/syscall.h	/^typedef struct s_syscall_arg {$/;"	s
 s_syscall_info	inc/syscall.h	/^typedef struct s_syscall_info {$/;"	s
 s_syscall_prototype	inc/syscall.h	/^typedef struct s_syscall_prototype {$/;"	s
-si_code_decode	src/errno.c	/^const char *si_code_decode(int si_code) {$/;"	f	typeref:typename:const char *
 size	inc/syscall.h	/^	int	 size;$/;"	m	struct:s_syscall_arg	typeref:typename:int
 strerrordesc	src/errno.c	/^const char *strerrordesc(int error) {$/;"	f	typeref:typename:const char *
 strerrorname	src/errno.c	/^const char *strerrorname(int error) {$/;"	f	typeref:typename:const char *
