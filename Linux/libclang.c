@@ -4,44 +4,26 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#define SIZEOF(x) (sizeof(x) / sizeof(*x))
-
-typedef enum {
-	ARCH_I386,
-	ARCH_COMMON,
-	ARCH_64,
-	ARCH_X32,
-} e_arch;
-
-typedef struct {
-	int nr;
-	e_arch arch;
-	char name[30];
-	char entry[35];
-} info;
-
 typedef struct s_data {
 	int current;
-	const info *i;
+	int inspect;
 }	t_data;
-
 
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata);
 const char *get_format(CXType type);
 void print_type(CXType type, CXClientData clientdata);
 
 int main(int argc, char **argv) {
-	t_data data = { 0, NULL };
+	t_data data = { 0, -1 };
+	const char *file = argv[1];
 
-	const char *file = "syscalls.h";
+	if (argc < 2) {
+		fprintf(stderr, "usage: %s: HEADER\n", argv[0]);
+		return 1;
+	}
 
-	const info array[] = {
-#include "table.h"
-	};
-	const size_t size = SIZEOF(array);
-
-	if (argc > 1) {
-		file = argv[1];
+	if (argc > 2 && isdigit(*argv[2])) {
+		data.inspect = atoi(argv[2]);
 	}
 
 	CXIndex index = clang_createIndex(0, 0);
@@ -52,16 +34,9 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	for (size_t i = 0; i < size; i++) {
-		CXCursor cursor = clang_getTranslationUnitCursor(unit);
+	CXCursor cursor = clang_getTranslationUnitCursor(unit);
 	
-		if (!strcmp(array[i].name, "mmap")) {
-			(void)2;
-		}
-
-		data.i = &array[i];
-		clang_visitChildren(cursor, prototype_visitor, &data);
-	}
+	clang_visitChildren(cursor, prototype_visitor, &data);
 }
 
 enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXClientData clientdata) {
@@ -73,18 +48,7 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 		return CXChildVisit_Continue;
 	}
 
-	enum CXCursorKind kind = clang_getCursorKind(cursor);
-
-	if (kind != CXCursor_FunctionDecl) {
-		return CXChildVisit_Continue;
-	}
-
 	CXString spelling = clang_getCursorSpelling(cursor);
-
-	if (strcmp(clang_getCString(spelling), data->i->entry)) {
-		return CXChildVisit_Continue;
-	}
-
 	CXString display = clang_getCursorDisplayName(cursor);
 	CXType proto = clang_getCursorType(cursor);
 	int argc = clang_Cursor_getNumArguments(cursor);
@@ -93,17 +57,15 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 
 	// general info
 	printf("\t\t{ ");
-	printf("%-6s, ", data->i->arch == ARCH_I386 ? "X86" : "X86_64");
-	printf("%3i, ", data->i->nr);							// syscall number
+	printf("%3i, ", data->current);							// syscall number
 	printf("%i, ", argc);									// argc
-	printf("\"%s\", ", data->i->name);			// syscall name
+	printf("\"%s\", ", clang_getCString(spelling));			// syscall name
 	
 	// return type
 	CXType return_type = clang_getResultType(proto);
 	int size = clang_Type_getSizeOf(return_type);
-	const char *format = get_format(return_type);
 
-	printf("{ \"%s\", %i }, ", format, size);				// format
+	printf("{ %i }, ", size);				// format
 	printf("{ ");
 
 	for (int i = 0; i < argc; i++) {

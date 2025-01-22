@@ -1,5 +1,6 @@
 #define _GNU_SOURCE // strerrorname_np
 
+#include <limits.h>
 #include "arch.h"
 #include "strace.h"
 #include "syscall.h"
@@ -163,8 +164,14 @@ void on_syscall_end(t_syscall_info *info, const u_regs *regs) {
 
 		eprintf("%s (%s)", strerrorname(-ret), strerrordesc(-ret));
 	} else {
-		eprintf(info->prototype->ret.format, ret);
+		if (ret > INT_MAX) {
+			eprintf("%p", (void *)ret);
+		} else {
+			eprintf("%li", ret);
+		}
+		// TODO: pagesize
 	}
+	(void)info;
 
 	eprintf("\n");
 }
