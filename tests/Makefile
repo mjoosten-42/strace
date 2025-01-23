@@ -1,13 +1,13 @@
-NAMES = $(basename $(shell find . -name '*.s'))
+MAKEFILES = $(dir $(shell find . -mindepth 2 -name Makefile))
 
-all: $(NAMES)
-
-$(NAMES): %: %.s
-	nasm -f elf64 $< -o $@.o && ld $@.o -o $@
+all: $(MAKEFILES)
+	for dir in $(MAKEFILES); do $(MAKE) -C $$dir; done
 
 clean:
-	$(RM) *.o
+	for dir in $(MAKEFILES); do $(MAKE) -C $$dir clean; done
 
 fclean: clean
-	$(RM) $(NAMES)
+	for dir in $(MAKEFILES); do $(MAKE) -C $$dir fclean; done
 
+re:
+	for dir in $(MAKEFILES); do $(MAKE) -C $$dir re; done

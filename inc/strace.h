@@ -34,6 +34,10 @@ int trace(pid_t pid_t);
 
 void on_syscall_start(t_syscall_info *info, const u_regs *regs);
 void on_syscall_end(t_syscall_info *info, const u_regs *regs);
+void print_syscall(const t_syscall_info *info, long args[6]);
+void print_nosys(int nr, long args[6]);
+
+const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr);
 
 const char *strerrorname(int error);
 const char *strerrordesc(int error);

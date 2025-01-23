@@ -9,6 +9,7 @@
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
 !_TAG_PROGRAM_VERSION	5.9.0	//
+ARCH_H	inc/arch.h	/^#define ARCH_H$/;"	d
 CHECK_SYSCALL	inc/strace.h	/^#define CHECK_SYSCALL(/;"	d
 ERESTARTNOHAND	src/errno.c	/^	#define ERESTARTNOHAND /;"	d	file:
 ERESTARTNOINTR	src/errno.c	/^	#define ERESTARTNOINTR /;"	d	file:
@@ -17,32 +18,90 @@ ERESTART_RESTARTBLOCK	src/errno.c	/^	#define ERESTART_RESTARTBLOCK /;"	d	file:
 ONCE	inc/strace.h	/^#define ONCE(/;"	d
 STRACE_H	inc/strace.h	/^#define STRACE_H$/;"	d
 SYSCALL_H	inc/syscall.h	/^#define SYSCALL_H$/;"	d
+X32	inc/arch.h	/^	X32,$/;"	e	enum:__anon556dc7620103
+X64	inc/arch.h	/^	X64,$/;"	e	enum:__anon556dc7620103
 _GNU_SOURCE	src/errno.c	/^#define _GNU_SOURCE$/;"	d	file:
 _GNU_SOURCE	src/main.c	/^#define _GNU_SOURCE$/;"	d	file:
 _GNU_SOURCE	src/trace.c	/^#define _GNU_SOURCE /;"	d	file:
+__anon556dc7620103	inc/arch.h	/^typedef enum {$/;"	g
+__anon556dc7620208	inc/arch.h	/^typedef struct {$/;"	s
+__anon556dc762030a	inc/arch.h	/^	union {$/;"	u	struct:__anon556dc7620208
+__anon556dc7620408	inc/arch.h	/^		struct {$/;"	s	union:__anon556dc7620208::__anon556dc762030a
+__anon556dc7620508	inc/arch.h	/^		struct {$/;"	s	union:__anon556dc7620208::__anon556dc762030a
+arch	inc/arch.h	/^	e_arch arch;$/;"	m	struct:__anon556dc7620208	typeref:typename:e_arch
 argc	inc/syscall.h	/^	int			  argc;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
 args	inc/syscall.h	/^	t_syscall_arg args[6];$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg[6]
+cs	inc/arch.h	/^			uint64_t cs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+ds	inc/arch.h	/^			uint64_t ds;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+e_arch	inc/arch.h	/^} e_arch;$/;"	t	typeref:enum:__anon556dc7620103
+eax	inc/arch.h	/^			int32_t eax;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+ebp	inc/arch.h	/^			int32_t ebp;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+ebx	inc/arch.h	/^			int32_t ebx;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+ecx	inc/arch.h	/^			int32_t ecx;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+edi	inc/arch.h	/^			int32_t edi;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+edx	inc/arch.h	/^			int32_t edx;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+eflags	inc/arch.h	/^			int32_t eflags;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+eflags	inc/arch.h	/^			uint64_t eflags;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+eip	inc/arch.h	/^			int32_t eip;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
 eprintf	inc/strace.h	/^#define eprintf(/;"	d
+es	inc/arch.h	/^			uint64_t es;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+esi	inc/arch.h	/^			int32_t esi;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+esp	inc/arch.h	/^			int32_t esp;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
 format	inc/syscall.h	/^	char format[8];$/;"	m	struct:s_syscall_arg	typeref:typename:char[8]
+fs	inc/arch.h	/^			uint64_t fs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+fs_base	inc/arch.h	/^			uint64_t fs_base;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+gs	inc/arch.h	/^			uint64_t gs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+gs_base	inc/arch.h	/^			uint64_t gs_base;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
 main	src/main.c	/^int main(int argc, char **argv) {$/;"	f	typeref:typename:int
+max	src/syscall.c	/^const size_t max = 1000;$/;"	v	typeref:typename:const size_t
 name	inc/syscall.h	/^	char		  name[32];$/;"	m	struct:s_syscall_prototype	typeref:typename:char[32]
-nr	inc/syscall.h	/^	int			  nr;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
-on_syscall_end	src/trace.c	/^void on_syscall_end(t_syscall_info *info, struct user_regs_struct *regs) {$/;"	f	typeref:typename:void
-on_syscall_start	src/trace.c	/^void on_syscall_start(t_syscall_info *info, struct user_regs_struct *regs) {$/;"	f	typeref:typename:void
+on_syscall_end	src/trace.c	/^void on_syscall_end(t_syscall_info *info, const u_regs *regs) {$/;"	f	typeref:typename:void
+on_syscall_start	src/trace.c	/^void on_syscall_start(t_syscall_info *info, const u_regs *regs) {$/;"	f	typeref:typename:void
+orig_eax	inc/arch.h	/^			int32_t orig_eax;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+orig_rax	inc/arch.h	/^			uint64_t orig_rax;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+print_nosys	src/trace.c	/^void print_nosys(int nr, long args[6]) {$/;"	f	typeref:typename:void
+print_syscall	src/trace.c	/^void print_syscall(const t_syscall_info *info, long args[6]) {$/;"	f	typeref:typename:void
 prototype	inc/syscall.h	/^	const t_syscall_prototype	  *prototype;$/;"	m	struct:s_syscall_info	typeref:typename:const t_syscall_prototype *
+r10	inc/arch.h	/^			uint64_t r10;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r11	inc/arch.h	/^			uint64_t r11;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r12	inc/arch.h	/^			uint64_t r12;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r13	inc/arch.h	/^			uint64_t r13;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r14	inc/arch.h	/^			uint64_t r14;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r15	inc/arch.h	/^			uint64_t r15;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r8	inc/arch.h	/^			uint64_t r8;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+r9	inc/arch.h	/^			uint64_t r9;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rax	inc/arch.h	/^			uint64_t rax;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rbp	inc/arch.h	/^			uint64_t rbp;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rbx	inc/arch.h	/^			uint64_t rbx;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rcx	inc/arch.h	/^			uint64_t rcx;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rdi	inc/arch.h	/^			uint64_t rdi;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rdx	inc/arch.h	/^			uint64_t rdx;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
 ret	inc/syscall.h	/^	t_syscall_arg ret;$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg
+rip	inc/arch.h	/^			uint64_t rip;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rsi	inc/arch.h	/^			uint64_t rsi;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
+rsp	inc/arch.h	/^			uint64_t rsp;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
 running	inc/syscall.h	/^	unsigned int				 running : 1;$/;"	m	struct:s_syscall_info	typeref:typename:unsigned int:1
 s_syscall_arg	inc/syscall.h	/^typedef struct s_syscall_arg {$/;"	s
 s_syscall_info	inc/syscall.h	/^typedef struct s_syscall_info {$/;"	s
 s_syscall_prototype	inc/syscall.h	/^typedef struct s_syscall_prototype {$/;"	s
 size	inc/syscall.h	/^	int	 size;$/;"	m	struct:s_syscall_arg	typeref:typename:int
+ss	inc/arch.h	/^			uint64_t ss;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
 strerrordesc	src/errno.c	/^const char *strerrordesc(int error) {$/;"	f	typeref:typename:const char *
 strerrorname	src/errno.c	/^const char *strerrorname(int error) {$/;"	f	typeref:typename:const char *
-syscall_get_prototype	src/syscall.c	/^const t_syscall_prototype *syscall_get_prototype(int nr) {$/;"	f	typeref:typename:const t_syscall_prototype *
-syscall_max	src/syscall.c	/^const size_t syscall_max = 440;$/;"	v	typeref:typename:const size_t
+syscall_get_prototype	src/syscall.c	/^const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr) {$/;"	f	typeref:typename:const t_syscall_prototype *
 t_syscall_arg	inc/syscall.h	/^} t_syscall_arg;$/;"	t	typeref:struct:s_syscall_arg
 t_syscall_info	inc/syscall.h	/^} t_syscall_info;$/;"	t	typeref:struct:s_syscall_info
 t_syscall_prototype	inc/syscall.h	/^} t_syscall_prototype;$/;"	t	typeref:struct:s_syscall_prototype
+test	src/syscall.c	/^static const t_syscall_prototype test[][max] = {$/;"	v	typeref:typename:const t_syscall_prototype[][]	file:
 trace	src/trace.c	/^int trace(pid_t pid) {$/;"	f	typeref:typename:int
+u_regs	inc/arch.h	/^} u_regs;$/;"	t	typeref:struct:__anon556dc7620208
 values	inc/syscall.h	/^	struct __ptrace_syscall_info values;$/;"	m	struct:s_syscall_info	typeref:struct:__ptrace_syscall_info
 which	src/which.c	/^const char *which(const char *filename) {$/;"	f	typeref:typename:const char *
+x86	inc/arch.h	/^		} x86;$/;"	m	union:__anon556dc7620208::__anon556dc762030a	typeref:struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408
+x86_64	inc/arch.h	/^		} x86_64;$/;"	m	union:__anon556dc7620208::__anon556dc762030a	typeref:struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508
+xcs	inc/arch.h	/^			int32_t xcs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+xds	inc/arch.h	/^			int32_t xds;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+xes	inc/arch.h	/^			int32_t xes;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+xfs	inc/arch.h	/^			int32_t xfs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+xgs	inc/arch.h	/^			int32_t xgs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t
+xss	inc/arch.h	/^			int32_t xss;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620408	typeref:typename:int32_t

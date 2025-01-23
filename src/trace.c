@@ -102,7 +102,7 @@ int trace(pid_t pid) {
 }
 
 void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
-	long nr		 = 0;
+	unsigned long nr		 = 0;
 	long args[6] = { 0 };
 
 	switch (regs->arch) {
@@ -126,19 +126,13 @@ void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
 			break;
 	};
 
-	info->prototype = syscall_get_prototype(nr);
+	info->prototype = syscall_get_prototype(regs->arch, nr);
 
-	eprintf("%s(", info->prototype->name);
-
-	for (int i = 0; i < info->prototype->argc; i++) {
-		eprintf(info->prototype->args[i].format, args[i]);
-
-		if (i < info->prototype->argc - 1) {
-			eprintf(", ");
-		}
+	if (info->prototype) {
+		print_syscall(info, args);
+	} else {
+		print_nosys(nr, args);
 	}
-
-	eprintf(") = ");
 }
 
 void on_syscall_end(t_syscall_info *info, const u_regs *regs) {
@@ -164,14 +158,33 @@ void on_syscall_end(t_syscall_info *info, const u_regs *regs) {
 
 		eprintf("%s (%s)", strerrorname(-ret), strerrordesc(-ret));
 	} else {
-		if (ret > INT_MAX) {
-			eprintf("%p", (void *)ret);
-		} else {
-			eprintf("%li", ret);
-		}
-		// TODO: pagesize
+		eprintf(info->prototype->ret.format, ret);
+		// TODO: print %p if > pagesize?
 	}
-	(void)info;
 
 	eprintf("\n");
+}
+
+void print_syscall(const t_syscall_info *info, long args[6]) {
+	eprintf("%s(", info->prototype->name);
+
+	for (int i = 0; i < info->prototype->argc; i++) {
+		eprintf(info->prototype->args[i].format, args[i]);
+
+		if (i < info->prototype->argc - 1) {
+			eprintf(", ");
+		}
+	}
+
+	eprintf(") = ");
+}
+
+void print_nosys(int nr, long args[6]) {
+	eprintf("syscall_%#x(", nr);
+
+	for (int i = 0; i < 6; i++) {
+		eprintf("%p%s", (void *)args[i], i < 5 ? ", " : "");
+	}
+
+	eprintf(") = ");
 }

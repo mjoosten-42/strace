@@ -9,9 +9,8 @@ typedef struct s_syscall_arg {
 } t_syscall_arg;
 
 typedef struct s_syscall_prototype {
-	int			  nr;
-	int			  argc;
 	char		  name[32];
+	int			  argc;
 	t_syscall_arg ret;
 	t_syscall_arg args[6];
 } t_syscall_prototype;
@@ -21,7 +20,5 @@ typedef struct s_syscall_info {
 	const t_syscall_prototype	  *prototype;
 	unsigned int				 running : 1;
 } t_syscall_info;
-
-const t_syscall_prototype *syscall_get_prototype(int nr);
 
 #endif
