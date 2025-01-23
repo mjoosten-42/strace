@@ -1,3 +1,5 @@
+/* clang-format off */
+
 #include <asm/prctl.h>
 #include <asm/unistd.h>
 #include <dirent.h>

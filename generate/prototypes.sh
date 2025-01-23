@@ -93,6 +93,9 @@ done < "$systemheader"
 headers="$(echo "$headers" | sort | uniq)"
 headers="${headers:1}"
 
+echo "/* clang-format off */"
+echo
+
 echo "$headers"
 echo
 

@@ -1,12 +1,12 @@
 #define _GNU_SOURCE // strerrorname_np
 
-#include <limits.h>
 #include "arch.h"
 #include "strace.h"
 #include "syscall.h"
 
 #include <assert.h>
 #include <elf.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,9 +21,9 @@ int trace(pid_t pid) {
 	int			   status = 0;
 	e_arch		   arch	  = X64;
 
-	siginfo_t siginfo = { 0 };
-	u_regs	  regs	  = { 0 };
-	struct iovec iov = { &regs.x86_64, sizeof(regs) };
+	siginfo_t	 siginfo = { 0 };
+	u_regs		 regs	 = { 0 };
+	struct iovec iov	 = { &regs.x86_64, sizeof(regs) };
 
 	void *addr = NULL;
 	void *data = NULL;
