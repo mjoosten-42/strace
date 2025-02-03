@@ -1,12 +1,13 @@
 global _start
 
 _start:
-	mov	rax, 500
+	mov	rax, 400
 	mov rdi, 0
-	mov rsi, -1
-	mov rdx, 10000
-	mov r8, 0xFFFFFFFF
-	mov r9, 0x8FFFFFFF
+	mov rsi, 1
+	mov rdx, 2
+	mov r10, 3
+	mov r8,  4
+	mov r9,  5
 	syscall
 	
 	mov	rax, 60

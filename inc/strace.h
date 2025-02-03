@@ -6,7 +6,7 @@
 
 #include <errno.h>
 #include <signal.h>
-#include <string.h>
+#include <stdio.h>
 #include <sys/user.h>
 #include <unistd.h>
 
@@ -25,7 +25,7 @@
 		static int flag = 1; \
                              \
 		if (flag) {          \
-			(call);          \
+			call;            \
 			flag = 0;        \
 		}                    \
 	} while (0)

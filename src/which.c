@@ -18,16 +18,15 @@ const char *which(const char *filename) {
 
 	size_t		cap		= PATH_MAX;
 	const char *paths	= getenv("PATH");
-	char		 *path	= calloc(cap, sizeof(char));
+	char		 *path	= malloc(cap);
 	size_t		filelen = strlen(filename);
+	const char *colon	= NULL;
 
-	if (!path) {
+	if (!path || !paths) {
 		return NULL;
 	}
 
-	char *colon = strchr(paths, ':');
-
-	while (colon) {
+	while ((colon = strchr(paths, ':'))) {
 		size_t dirlen = colon - paths;
 		size_t len	  = dirlen + 1 + filelen;
 
@@ -50,8 +49,9 @@ const char *which(const char *filename) {
 		}
 
 		paths = colon + 1;
-		colon = strchr(paths, ':');
 	}
+
+	free(path);
 
 	return NULL;
 }

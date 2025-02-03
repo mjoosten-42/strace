@@ -40,7 +40,7 @@ int trace(pid_t pid) {
 		addr = NULL;
 		data = NULL;
 
-		int signalled = !((WIFSTOPPED(status) && WSTOPSIG(status) & 0x80));
+		int signalled = !(WIFSTOPPED(status) && WSTOPSIG(status) & 0x80);
 
 		if (signalled && info.running) {
 			eprintf("?\n");
@@ -64,12 +64,12 @@ int trace(pid_t pid) {
 
 			const char *abbr = sigabbrev_np(siginfo.si_signo);
 
-			eprintf("--- SIG%s { si_signo = SIG%s", abbr, abbr);
+			eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
 
 			if (siginfo.si_code > 0) {
-				eprintf(", si_code = SI_KERNEL");
+				eprintf("SI_KERNEL");
 			} else {
-				eprintf(", si_code = SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
+				eprintf("SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
 			}
 
 			eprintf(" } ---\n");
@@ -91,7 +91,7 @@ int trace(pid_t pid) {
 			if (regs.arch != arch) {
 				arch = regs.arch;
 
-				eprintf("[ Process PID = %i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
+				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
 			}
 
 			info.running = !info.running;
@@ -102,8 +102,8 @@ int trace(pid_t pid) {
 }
 
 void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
-	unsigned long nr		 = 0;
-	long args[6] = { 0 };
+	unsigned long nr	  = 0;
+	long		  args[6] = { 0 };
 
 	switch (regs->arch) {
 		case X64:
@@ -111,7 +111,7 @@ void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
 			args[0] = regs->x86_64.rdi;
 			args[1] = regs->x86_64.rsi;
 			args[2] = regs->x86_64.rdx;
-			args[3] = regs->x86_64.rcx;
+			args[3] = regs->x86_64.r10;
 			args[4] = regs->x86_64.r8;
 			args[5] = regs->x86_64.r9;
 			break;
@@ -159,7 +159,6 @@ void on_syscall_end(t_syscall_info *info, const u_regs *regs) {
 		eprintf("%s (%s)", strerrorname(-ret), strerrordesc(-ret));
 	} else {
 		eprintf(info->prototype->ret.format, ret);
-		// TODO: print %p if > pagesize?
 	}
 
 	eprintf("\n");
@@ -169,6 +168,9 @@ void print_syscall(const t_syscall_info *info, long args[6]) {
 	eprintf("%s(", info->prototype->name);
 
 	for (int i = 0; i < info->prototype->argc; i++) {
+		// print program name on first execve
+		ONCE(eprintf("\"%s\", ", (char *)args[0]); i++);
+
 		eprintf(info->prototype->args[i].format, args[i]);
 
 		if (i < info->prototype->argc - 1) {
@@ -183,7 +185,7 @@ void print_nosys(int nr, long args[6]) {
 	eprintf("syscall_%#x(", nr);
 
 	for (int i = 0; i < 6; i++) {
-		eprintf("%p%s", (void *)args[i], i < 5 ? ", " : "");
+		eprintf("%#lx%s", args[i], i < 5 ? ", " : "");
 	}
 
 	eprintf(") = ");
