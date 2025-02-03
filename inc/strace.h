@@ -16,7 +16,7 @@
 	do {                                              \
 		if ((call) == -1) {                           \
 			eprintf(#call ": %s\n", strerror(errno)); \
-			kill(0, SIGKILL);                         \
+			kill(pid, SIGKILL);                       \
 		}                                             \
 	} while (0)
 
@@ -25,16 +25,19 @@
 		static int flag = 1; \
                              \
 		if (flag) {          \
-			call;            \
+			(call);          \
 			flag = 0;        \
 		}                    \
 	} while (0)
 
-int trace(pid_t pid_t);
+int event_loop(pid_t pid, void (*handler)(pid_t, int, int));
 
-void on_syscall_start(t_syscall_info *info, const u_regs *regs);
-void on_syscall_end(t_syscall_info *info, const u_regs *regs);
-void print_syscall(const t_syscall_info *info, long args[6]);
+void trace(pid_t pid, int status, int signalled);
+void count(pid_t pid, int status, int signalled);
+
+void on_syscall_start(const u_regs *regs);
+void on_syscall_end(const u_regs *regs);
+void print_syscall(const t_syscall_prototype *prototype, long args[6]);
 void print_nosys(int nr, long args[6]);
 
 const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr);

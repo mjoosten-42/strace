@@ -1,24 +1,33 @@
 global _start
-global handler
+
+%define SIGALRM 14
+%define sigaction 13
+%define SA_RESTORER 0x04000000
 
 handler:
 	ret
 
+restorer:
+	mov rax, 15
+	syscall
+
 _start:
 	mov	rcx, rsp
-	sub	rsp, 48
-	lea	rdx, [handler]
-	mov	[rcx + 0], rdx
-	mov	QWORD [rcx + 8],	0
-	mov	QWORD [rcx + 16],	0
-	mov	QWORD [rcx + 24],	0
-	mov	QWORD [rcx + 32],	0
+	sub	rsp, 40
 
-	mov	rax, 13			; sigaction
-	mov	rdi, 14			; SIGALRM
+	lea	rax, [handler]
+	mov	QWORD [rcx + 0],	rax
+	
+	lea rax, [restorer]
+	mov	QWORD [rcx + 8],	SA_RESTORER
+	mov	QWORD [rcx + 16],	rax
+	mov	QWORD [rcx + 24],	0
+
+	mov	rax, sigaction
+	mov	rdi, SIGALRM
 	mov	rsi, rcx
 	mov	rdx, 0
-	mov	r10, 8
+	mov r10, 8
 	syscall
 
 	mov	rax, 37		; alarm

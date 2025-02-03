@@ -15,10 +15,4 @@ typedef struct s_syscall_prototype {
 	t_syscall_arg args[6];
 } t_syscall_prototype;
 
-typedef struct s_syscall_info {
-	struct __ptrace_syscall_info values;
-	const t_syscall_prototype	  *prototype;
-	unsigned int				 running : 1;
-} t_syscall_info;
-
 #endif

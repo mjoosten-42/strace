@@ -16,92 +16,115 @@
 #include <sys/user.h>
 #include <sys/wait.h>
 
-int trace(pid_t pid) {
-	t_syscall_info info	  = { 0 };
-	int			   status = 0;
-	e_arch		   arch	  = X64;
-
-	siginfo_t	 siginfo = { 0 };
-	u_regs		 regs	 = { 0 };
-	struct iovec iov	 = { &regs.x86_64, sizeof(regs) };
-
-	void *addr = NULL;
-	void *data = NULL;
+int event_loop(pid_t pid, void (*handler)(pid_t, int, int)) {
+	void *data	 = NULL;
+	int	  status = 0;
 
 	CHECK_SYSCALL(waitpid(pid, &status, 0));
 
 	while (1) {
-		iov.iov_len = sizeof(regs);
-
-		// Continue until next syscall
-		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, addr, data));
+		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, NULL, data));
 		CHECK_SYSCALL(waitpid(pid, &status, 0));
 
-		addr = NULL;
 		data = NULL;
+
+		// Forward signals to tracee
+		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
+			data = (void *)(long)WSTOPSIG(status);
+		}
 
 		int signalled = !(WIFSTOPPED(status) && WSTOPSIG(status) & 0x80);
 
-		if (signalled && info.running) {
-			eprintf("?\n");
-			info.running = 0;
-		}
+		handler(pid, status, signalled);
 
-		if (WIFEXITED(status)) {
-			eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
+		if (WIFEXITED(status) || WIFSIGNALED(status)) {
 			break;
-		}
-
-		if (WIFSIGNALED(status)) {
-			eprintf("+++ killed by SIG%s %s+++\n",
-					sigabbrev_np(WTERMSIG(status)),
-					WCOREDUMP(status) ? "(core dumped) " : "");
-			break;
-		}
-
-		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
-			CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
-
-			const char *abbr = sigabbrev_np(siginfo.si_signo);
-
-			eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
-
-			if (siginfo.si_code > 0) {
-				eprintf("SI_KERNEL");
-			} else {
-				eprintf("SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
-			}
-
-			eprintf(" } ---\n");
-
-			// set data to signal to be delivered to tracee
-			data = (void *)(long)(WSTOPSIG(status) & ~0x80);
-		} else {
-			// read registers
-			CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
-
-			regs.arch = (iov.iov_len == sizeof(regs.x86_64) ? X64 : X32);
-
-			if (!info.running) {
-				on_syscall_start(&info, &regs);
-			} else {
-				on_syscall_end(&info, &regs);
-			}
-
-			if (regs.arch != arch) {
-				arch = regs.arch;
-
-				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
-			}
-
-			info.running = !info.running;
 		}
 	}
 
 	return WEXITSTATUS(status);
 }
 
-void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
+void trace(pid_t pid, int status, int signalled) {
+	static e_arch arch	  = X64;
+	static int	  running = 0;
+
+	if (signalled && running) {
+		eprintf("?\n");
+		running = 0;
+	}
+
+	if (WIFEXITED(status)) {
+		eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
+		return;
+	}
+
+	// AKA WIFTERMINATED
+	if (WIFSIGNALED(status)) {
+		eprintf(
+			"+++ killed by SIG%s %s+++\n", sigabbrev_np(WTERMSIG(status)), WCOREDUMP(status) ? "(core dumped) " : "");
+		return;
+	}
+
+	// Stopped by signal
+	if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
+		siginfo_t siginfo = { 0 };
+
+		CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
+
+		const char *abbr = sigabbrev_np(siginfo.si_signo);
+
+		eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
+
+		if (siginfo.si_code > 0) {
+			eprintf("SI_KERNEL");
+		} else {
+			eprintf("SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
+		}
+
+		eprintf(" } ---\n");
+	}
+	// Syscall start-stop
+	else {
+		u_regs		 regs = { 0 };
+		struct iovec iov  = { &regs.x86_64, sizeof(regs) };
+
+		// read registers
+		CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
+
+		regs.arch = (iov.iov_len == sizeof(regs.x86_64) ? X64 : X32);
+
+		if (!running) {
+			on_syscall_start(&regs);
+		} else {
+			on_syscall_end(&regs);
+		}
+
+		if (regs.arch != arch) {
+			arch = regs.arch;
+
+			eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
+		}
+
+		running = !running;
+	}
+}
+
+void count(pid_t pid, int status, int signalled) {
+	static int running = 0;
+
+	// Ignore anything but syscall events
+	if (signalled) {
+		return;
+	}
+
+	eprintf("count++\n");
+	(void)running;
+	(void)pid;
+	(void)status;
+}
+
+void on_syscall_start(const u_regs *regs) {
 	unsigned long nr	  = 0;
 	long		  args[6] = { 0 };
 
@@ -126,54 +149,54 @@ void on_syscall_start(t_syscall_info *info, const u_regs *regs) {
 			break;
 	};
 
-	info->prototype = syscall_get_prototype(regs->arch, nr);
+	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, nr);
 
-	if (info->prototype) {
-		print_syscall(info, args);
+	if (prototype) {
+		print_syscall(prototype, args);
 	} else {
 		print_nosys(nr, args);
 	}
 }
 
-void on_syscall_end(t_syscall_info *info, const u_regs *regs) {
+void on_syscall_end(const u_regs *regs) {
 	long ret = 0;
+	long nr	 = 0;
 
 	switch (regs->arch) {
 		case X64:
+			nr	= regs->x86_64.orig_rax;
 			ret = regs->x86_64.rax;
 			break;
 		case X32:
+			nr	= regs->x86.orig_eax;
 			ret = regs->x86.eax;
 			break;
 	};
 
+	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, nr);
+
 	if (ret < 0) {
 		// kernel-only errors such as ERESTART do not have a corresponding user
 		// error string.
-		if (strerrorname_np(-ret) == NULL) {
-			eprintf("? ");
-		} else {
-			eprintf("%i ", -1);
-		}
-
-		eprintf("%s (%s)", strerrorname(-ret), strerrordesc(-ret));
+		eprintf("%s %s (%s)", strerrorname_np(-ret) ? "-1" : "?", strerrorname(-ret), strerrordesc(-ret));
 	} else {
-		eprintf(info->prototype->ret.format, ret);
+		eprintf(prototype->ret.format, ret);
 	}
 
 	eprintf("\n");
 }
 
-void print_syscall(const t_syscall_info *info, long args[6]) {
-	eprintf("%s(", info->prototype->name);
+void print_syscall(const t_syscall_prototype *prototype, long args[6]) {
+	eprintf("%s(", prototype->name);
 
-	for (int i = 0; i < info->prototype->argc; i++) {
+	for (int i = 0; i < prototype->argc; i++) {
 		// print program name on first execve
-		ONCE(eprintf("\"%s\", ", (char *)args[0]); i++);
+		ONCE(eprintf("\"%s\", ", (char *)args[i++]));
 
-		eprintf(info->prototype->args[i].format, args[i]);
+		// TODO; print 32 bit pionters with correct size
+		eprintf(prototype->args[i].format, args[i]);
 
-		if (i < info->prototype->argc - 1) {
+		if (i < prototype->argc - 1) {
 			eprintf(", ");
 		}
 	}
