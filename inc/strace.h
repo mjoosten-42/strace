@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/user.h>
 #include <unistd.h>
 
@@ -34,6 +35,8 @@ int event_loop(pid_t pid, void (*handler)(pid_t, int, int));
 
 void trace(pid_t pid, int status, int signalled);
 void count(pid_t pid, int status, int signalled);
+
+void get_regs(pid_t pid, u_regs *regs);
 
 void on_syscall_start(const u_regs *regs);
 void on_syscall_end(const u_regs *regs);

@@ -10,6 +10,8 @@ typedef enum {
 
 typedef struct {
 	e_arch arch;
+	int nr;
+	long ret;
 
 	union {
 		struct {

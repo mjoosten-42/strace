@@ -32,7 +32,7 @@ __anon556dc7620508	inc/arch.h	/^		struct {$/;"	s	union:__anon556dc7620208::__ano
 arch	inc/arch.h	/^	e_arch arch;$/;"	m	struct:__anon556dc7620208	typeref:typename:e_arch
 argc	inc/syscall.h	/^	int			  argc;$/;"	m	struct:s_syscall_prototype	typeref:typename:int
 args	inc/syscall.h	/^	t_syscall_arg args[6];$/;"	m	struct:s_syscall_prototype	typeref:typename:t_syscall_arg[6]
-count	src/trace.c	/^void count(pid_t pid, int status, int signalled) {$/;"	f	typeref:typename:void
+count	src/count.c	/^void count(pid_t pid, int status, int signalled) {$/;"	f	typeref:typename:void
 cs	inc/arch.h	/^			uint64_t cs;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
 ds	inc/arch.h	/^			uint64_t ds;$/;"	m	struct:__anon556dc7620208::__anon556dc762030a::__anon556dc7620508	typeref:typename:uint64_t
 e_arch	inc/arch.h	/^} e_arch;$/;"	t	typeref:enum:__anon556dc7620103

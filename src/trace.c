@@ -4,7 +4,6 @@
 #include "strace.h"
 #include "syscall.h"
 
-#include <assert.h>
 #include <elf.h>
 #include <limits.h>
 #include <signal.h>
@@ -86,13 +85,9 @@ void trace(pid_t pid, int status, int signalled) {
 	}
 	// Syscall start-stop
 	else {
-		u_regs		 regs = { 0 };
-		struct iovec iov  = { &regs.x86_64, sizeof(regs) };
+		u_regs regs = { 0 };
 
-		// read registers
-		CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
-
-		regs.arch = (iov.iov_len == sizeof(regs.x86_64) ? X64 : X32);
+		get_regs(pid, &regs);
 
 		if (!running) {
 			on_syscall_start(&regs);
@@ -110,27 +105,31 @@ void trace(pid_t pid, int status, int signalled) {
 	}
 }
 
-void count(pid_t pid, int status, int signalled) {
-	static int running = 0;
+void get_regs(pid_t pid, u_regs *regs) {
+	struct iovec iov  = { &regs->x86_64, sizeof(*regs) };
 
-	// Ignore anything but syscall events
-	if (signalled) {
-		return;
-	}
+	// read registers
+	CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
 
-	eprintf("count++\n");
-	(void)running;
-	(void)pid;
-	(void)status;
+	regs->arch = (iov.iov_len == sizeof(regs->x86_64) ? X64 : X32);
+
+	switch (regs->arch) {
+		case X32:
+			regs->nr = regs->x86.orig_eax;
+			regs->ret = regs->x86.eax;
+			break;
+		case X64:
+			regs->nr = regs->x86_64.orig_rax;
+			regs->ret = regs->x86_64.rax;
+			break;
+	};
 }
 
 void on_syscall_start(const u_regs *regs) {
-	unsigned long nr	  = 0;
 	long		  args[6] = { 0 };
 
 	switch (regs->arch) {
 		case X64:
-			nr		= regs->x86_64.orig_rax;
 			args[0] = regs->x86_64.rdi;
 			args[1] = regs->x86_64.rsi;
 			args[2] = regs->x86_64.rdx;
@@ -139,7 +138,6 @@ void on_syscall_start(const u_regs *regs) {
 			args[5] = regs->x86_64.r9;
 			break;
 		case X32:
-			nr		= regs->x86.orig_eax;
 			args[0] = regs->x86.ebx;
 			args[1] = regs->x86.ecx;
 			args[2] = regs->x86.edx;
@@ -149,35 +147,20 @@ void on_syscall_start(const u_regs *regs) {
 			break;
 	};
 
-	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, nr);
+	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, regs->nr);
 
 	if (prototype) {
 		print_syscall(prototype, args);
 	} else {
-		print_nosys(nr, args);
+		print_nosys(regs->nr, args);
 	}
 }
 
 void on_syscall_end(const u_regs *regs) {
-	long ret = 0;
-	long nr	 = 0;
-
-	switch (regs->arch) {
-		case X64:
-			nr	= regs->x86_64.orig_rax;
-			ret = regs->x86_64.rax;
-			break;
-		case X32:
-			nr	= regs->x86.orig_eax;
-			ret = regs->x86.eax;
-			break;
-	};
-
-	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, nr);
+	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, regs->nr);
+	long ret = regs->ret;
 
 	if (ret < 0) {
-		// kernel-only errors such as ERESTART do not have a corresponding user
-		// error string.
 		eprintf("%s %s (%s)", strerrorname_np(-ret) ? "-1" : "?", strerrorname(-ret), strerrordesc(-ret));
 	} else {
 		eprintf(prototype->ret.format, ret);
@@ -193,7 +176,7 @@ void print_syscall(const t_syscall_prototype *prototype, long args[6]) {
 		// print program name on first execve
 		ONCE(eprintf("\"%s\", ", (char *)args[i++]));
 
-		// TODO; print 32 bit pionters with correct size
+		// TODO; print 32 bit pointers with correct size
 		eprintf(prototype->args[i].format, args[i]);
 
 		if (i < prototype->argc - 1) {
