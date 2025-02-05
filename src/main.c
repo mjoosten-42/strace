@@ -8,6 +8,14 @@
 #include <string.h>
 #include <sys/ptrace.h>
 #include <unistd.h>
+#include <signal.h>
+
+void f(int signum, siginfo_t *info, void *context) {
+	(void)signum;
+	(void)context;
+
+	eprintf(" [SIG%s %i %li %li ] ", sigabbrev_np(info->si_signo), info->si_pid, info->si_utime, info->si_stime);
+}
 
 int main(int argc, char **argv) {
 	pid_t pid	  = 0;
@@ -30,6 +38,10 @@ int main(int argc, char **argv) {
 		eprintf("%s: Can't stat '%s': %s\n", basename(argv[0]), argv[i], strerror(errno));
 		return EXIT_FAILURE;
 	}
+
+	struct sigaction sa = { .sa_sigaction = f, .sa_flags = SA_SIGINFO };
+
+	sigaction(SIGCHLD, &sa, NULL);
 
 	CHECK_SYSCALL(pid = fork());
 

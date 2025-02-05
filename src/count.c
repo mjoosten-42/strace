@@ -1,9 +1,9 @@
 #include "strace.h"
 
-#include <sys/time.h>
+#include <time.h>
 
 void count(pid_t pid, int status, int signalled) {
-	static struct timeval start_time = { 0 };
+	static struct timespec start = { 0 };
 	static int			  running	 = 0;
 
 	// Ignore anything but syscall events
@@ -11,16 +11,14 @@ void count(pid_t pid, int status, int signalled) {
 		return;
 	}
 
-	struct timeval current = { 0 };
+	struct timespec current = { 0 };
 
-	CHECK_SYSCALL(gettimeofday(&current, NULL));
+	CHECK_SYSCALL(clock_gettime(CLOCK_MONOTONIC, &current));
 
 	if (!running) {
-		start_time = current;
+		start = current;
 	} else {
-		suseconds_t usec = (current.tv_sec - start_time.tv_sec) * 1000000 + current.tv_usec - start_time.tv_usec;
-
-		eprintf("time: %lu\n", usec);
+		eprintf("time: %li\n", current.tv_sec - start.tv_sec); // TODO
 	}
 
 	running = !running;
@@ -28,3 +26,4 @@ void count(pid_t pid, int status, int signalled) {
 	(void)pid;
 	(void)status;
 }
+

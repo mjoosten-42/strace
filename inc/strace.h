@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <sys/user.h>
 #include <unistd.h>
 
@@ -50,5 +51,7 @@ const char *strerrordesc(int error);
 const char *syscall_name(int number);
 
 const char *which(const char *filename);
+
+void tv_sub(struct timespec *out, struct timespec *first, struct timespec *second);
 
 #endif

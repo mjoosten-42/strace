@@ -53,19 +53,20 @@ void trace(pid_t pid, int status, int signalled) {
 		running = 0;
 	}
 
+	// Tracee exited
 	if (WIFEXITED(status)) {
 		eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
 		return;
 	}
 
-	// AKA WIFTERMINATED
+	// Tracee terminated by deadly signal
 	if (WIFSIGNALED(status)) {
 		eprintf(
 			"+++ killed by SIG%s %s+++\n", sigabbrev_np(WTERMSIG(status)), WCOREDUMP(status) ? "(core dumped) " : "");
 		return;
 	}
 
-	// Stopped by signal
+	// Tracee stopped by signal
 	if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
 		siginfo_t siginfo = { 0 };
 
@@ -106,7 +107,7 @@ void trace(pid_t pid, int status, int signalled) {
 }
 
 void get_regs(pid_t pid, u_regs *regs) {
-	struct iovec iov  = { &regs->x86_64, sizeof(*regs) };
+	struct iovec iov = { &regs->x86_64, sizeof(*regs) };
 
 	// read registers
 	CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
@@ -115,18 +116,18 @@ void get_regs(pid_t pid, u_regs *regs) {
 
 	switch (regs->arch) {
 		case X32:
-			regs->nr = regs->x86.orig_eax;
+			regs->nr  = regs->x86.orig_eax;
 			regs->ret = regs->x86.eax;
 			break;
 		case X64:
-			regs->nr = regs->x86_64.orig_rax;
+			regs->nr  = regs->x86_64.orig_rax;
 			regs->ret = regs->x86_64.rax;
 			break;
 	};
 }
 
 void on_syscall_start(const u_regs *regs) {
-	long		  args[6] = { 0 };
+	long args[6] = { 0 };
 
 	switch (regs->arch) {
 		case X64:
@@ -158,7 +159,7 @@ void on_syscall_start(const u_regs *regs) {
 
 void on_syscall_end(const u_regs *regs) {
 	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, regs->nr);
-	long ret = regs->ret;
+	long					   ret		 = regs->ret;
 
 	if (ret < 0) {
 		eprintf("%s %s (%s)", strerrorname_np(-ret) ? "-1" : "?", strerrorname(-ret), strerrordesc(-ret));
@@ -177,7 +178,11 @@ void print_syscall(const t_syscall_prototype *prototype, long args[6]) {
 		ONCE(eprintf("\"%s\", ", (char *)args[i++]));
 
 		// TODO; print 32 bit pointers with correct size
-		eprintf(prototype->args[i].format, args[i]);
+		if (!strcmp(prototype->args[i].format, "%lu") && args[i] > 0x10000000) {
+			eprintf("%p", (void *)args[i]);
+		} else {
+			eprintf(prototype->args[i].format, args[i]);
+		}
 
 		if (i < prototype->argc - 1) {
 			eprintf(", ");
