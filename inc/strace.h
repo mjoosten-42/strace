@@ -2,14 +2,15 @@
 #define STRACE_H
 
 #include "arch.h"
+#include "opt.h"
 #include "syscall.h"
 
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <sys/user.h>
+#include <time.h>
 #include <unistd.h>
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
@@ -32,10 +33,7 @@
 		}                    \
 	} while (0)
 
-int event_loop(pid_t pid, void (*handler)(pid_t, int, int));
-
-void trace(pid_t pid, int status, int signalled);
-void count(pid_t pid, int status, int signalled);
+int trace(pid_t pid, const opt_t *opt);
 
 void get_regs(pid_t pid, u_regs *regs);
 
@@ -52,6 +50,7 @@ const char *syscall_name(int number);
 
 const char *which(const char *filename);
 
+void tv_add(struct timespec *out, struct timespec *first, struct timespec *second);
 void tv_sub(struct timespec *out, struct timespec *first, struct timespec *second);
 
 #endif

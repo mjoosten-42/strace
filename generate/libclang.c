@@ -86,26 +86,29 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 	// return type
 	CXType return_type = clang_getResultType(proto);
 	int size = clang_Type_getSizeOf(return_type);
+	CXString return_spelling = clang_getTypeKindSpelling(return_type.kind);
 
-	printf("{ \"%s\", %i }, ", get_format(return_type), size);	// return
+	printf("{ %s, %i }, ", clang_getCString(return_spelling), size);	// return
 	printf("{ ");
 
 	for (int i = 0; i < argc; i++) {
 		CXType arg = clang_getArgType(proto, i);
-		const char *format = get_format(arg);			
+		CXString arg_spelling = clang_getTypeKindSpelling(arg.kind);
 		int size = clang_Type_getSizeOf(arg);
 
 		if (size == CXTypeLayoutError_Incomplete) {
 			size = sizeof(void *);
 		}
 
-		printf("{ \"%s\", %i }", format, size);				// format
+		printf("{ %s, %i }", clang_getCString(arg_spelling), size);				// format
 
 		if (i < argc - 1) {
 			printf(",");
 		}
 		
 		printf(" ");
+
+		clang_disposeString(arg_spelling);
 	}
 
 	printf("} },\n");
@@ -120,7 +123,7 @@ enum CXChildVisitResult prototype_visitor(CXCursor cursor, CXCursor parent, CXCl
 	
 	clang_disposeString(display);
 	clang_disposeString(spelling);
-
+	clang_disposeString(return_spelling);
 
 	return CXChildVisit_Continue;
 }

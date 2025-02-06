@@ -2,28 +2,23 @@
 
 #include <time.h>
 
-void count(pid_t pid, int status, int signalled) {
-	static struct timespec start = { 0 };
-	static int			  running	 = 0;
+void tv_add(struct timespec *out, struct timespec *first, struct timespec *second) {
+	out->tv_sec	 = first->tv_sec + second->tv_sec;
+	out->tv_nsec = first->tv_nsec + second->tv_nsec;
 
-	// Ignore anything but syscall events
-	if (signalled) {
-		return;
+	if (out->tv_nsec > 1000000000) {
+		out->tv_sec++;
+		out->tv_nsec -= 1000000000;
 	}
-
-	struct timespec current = { 0 };
-
-	CHECK_SYSCALL(clock_gettime(CLOCK_MONOTONIC, &current));
-
-	if (!running) {
-		start = current;
-	} else {
-		eprintf("time: %li\n", current.tv_sec - start.tv_sec); // TODO
-	}
-
-	running = !running;
-
-	(void)pid;
-	(void)status;
 }
 
+void tv_sub(struct timespec *out, struct timespec *first, struct timespec *second) {
+	out->tv_sec = first->tv_sec - second->tv_sec;
+
+	if (first->tv_nsec > second->tv_nsec) {
+		out->tv_nsec = first->tv_nsec - second->tv_nsec;
+	} else {
+		out->tv_sec--;
+		out->tv_nsec = 1000000000 - (second->tv_nsec - first->tv_nsec);
+	}
+}

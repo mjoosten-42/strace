@@ -1,7 +1,7 @@
 global _start
 
 _start:
-	push QWORD 0
+	push QWORD 800000000
 	push QWORD 1
 	mov	rax, 35		; nanosleep
 	mov rdi, rsp

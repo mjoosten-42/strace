@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define SYSCALL_X86_MAX 466
+#define SYSCALL_X86_64_MAX 548
+
+#define SYSCALL_MAX MAX(SYSCALL_X86_MAX, SYSCALL_X86_64_MAX)
+
 typedef enum {
 	X32,
 	X64,

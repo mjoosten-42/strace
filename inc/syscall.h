@@ -3,8 +3,16 @@
 
 #include <sys/ptrace.h>
 
+enum e_type {
+	Int,
+	UInt,
+	Long,
+	ULong,
+	Pointer,
+};
+
 typedef struct s_syscall_arg {
-	char format[8];
+	enum e_type type;
 	int	 size;
 } t_syscall_arg;
 

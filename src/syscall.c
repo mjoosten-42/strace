@@ -1,17 +1,15 @@
 #include "syscall.h"
-
 #include "arch.h"
 
 #include <stddef.h>
 
-#define SYSCALL_MAX 548
-
 static const t_syscall_prototype test[][SYSCALL_MAX] = {
 	{
-#include "32/prototypes.h"
+		{ "read", 0, { Long, 8 }, { } },
+//#include "32/prototypes.h"
 	},
 	{
-#include "64/prototypes.h"
+//#include "64/prototypes.h"
 	},
 };
 

@@ -1,6 +1,7 @@
 #define _GNU_SOURCE // strerrorname_np
 
 #include "arch.h"
+#include "opt.h"
 #include "strace.h"
 #include "syscall.h"
 
@@ -15,9 +16,11 @@
 #include <sys/user.h>
 #include <sys/wait.h>
 
-int event_loop(pid_t pid, void (*handler)(pid_t, int, int)) {
-	void *data	 = NULL;
-	int	  status = 0;
+int trace(pid_t pid, const opt_t *opt) {
+	e_arch arch	   = X64;
+	int	   running = 0;
+	int	   status  = 0;
+	void	 *data	   = NULL;
 
 	CHECK_SYSCALL(waitpid(pid, &status, 0));
 
@@ -34,76 +37,79 @@ int event_loop(pid_t pid, void (*handler)(pid_t, int, int)) {
 
 		int signalled = !(WIFSTOPPED(status) && WSTOPSIG(status) & 0x80);
 
-		handler(pid, status, signalled);
+		if (signalled && running) {
+			if (!opt->summary) {
+				eprintf("?\n");
+			}
 
-		if (WIFEXITED(status) || WIFSIGNALED(status)) {
+			running = 0;
+		}
+
+		// Tracee exited
+		if (WIFEXITED(status)) {
+			if (!opt->summary) {
+				eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
+			}
+
 			break;
+		}
+
+		// Tracee terminated by deadly signal
+		if (WIFSIGNALED(status)) {
+			if (!opt->summary) {
+				eprintf("+++ killed by SIG%s %s+++\n",
+						sigabbrev_np(WTERMSIG(status)),
+						WCOREDUMP(status) ? "(core dumped) " : "");
+			}
+
+			break;
+		}
+
+		// Tracee stopped by signal
+		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
+			siginfo_t siginfo = { 0 };
+
+			CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
+
+			const char *abbr = sigabbrev_np(siginfo.si_signo);
+
+			if (!opt->summary) {
+				eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
+
+				if (siginfo.si_code > 0) {
+					eprintf("SI_KERNEL");
+				} else {
+					eprintf("SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
+				}
+
+				eprintf(" } ---\n");
+			}
+		}
+		// Syscall start-stop
+		else {
+			u_regs regs = { 0 };
+
+			get_regs(pid, &regs);
+
+			if (!opt->summary) {
+				if (!running) {
+					on_syscall_start(&regs);
+				} else {
+					on_syscall_end(&regs);
+				}
+			}
+
+			if (regs.arch != arch) {
+				arch = regs.arch;
+
+				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
+			}
+
+			running = !running;
 		}
 	}
 
 	return WEXITSTATUS(status);
-}
-
-void trace(pid_t pid, int status, int signalled) {
-	static e_arch arch	  = X64;
-	static int	  running = 0;
-
-	if (signalled && running) {
-		eprintf("?\n");
-		running = 0;
-	}
-
-	// Tracee exited
-	if (WIFEXITED(status)) {
-		eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
-		return;
-	}
-
-	// Tracee terminated by deadly signal
-	if (WIFSIGNALED(status)) {
-		eprintf(
-			"+++ killed by SIG%s %s+++\n", sigabbrev_np(WTERMSIG(status)), WCOREDUMP(status) ? "(core dumped) " : "");
-		return;
-	}
-
-	// Tracee stopped by signal
-	if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
-		siginfo_t siginfo = { 0 };
-
-		CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
-
-		const char *abbr = sigabbrev_np(siginfo.si_signo);
-
-		eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
-
-		if (siginfo.si_code > 0) {
-			eprintf("SI_KERNEL");
-		} else {
-			eprintf("SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
-		}
-
-		eprintf(" } ---\n");
-	}
-	// Syscall start-stop
-	else {
-		u_regs regs = { 0 };
-
-		get_regs(pid, &regs);
-
-		if (!running) {
-			on_syscall_start(&regs);
-		} else {
-			on_syscall_end(&regs);
-		}
-
-		if (regs.arch != arch) {
-			arch = regs.arch;
-
-			eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
-		}
-
-		running = !running;
-	}
 }
 
 void get_regs(pid_t pid, u_regs *regs) {
@@ -135,7 +141,7 @@ void on_syscall_start(const u_regs *regs) {
 			args[1] = regs->x86_64.rsi;
 			args[2] = regs->x86_64.rdx;
 			args[3] = regs->x86_64.r10;
-			args[4] = regs->x86_64.r8;
+			args[5] = regs->x86_64.r8;
 			args[5] = regs->x86_64.r9;
 			break;
 		case X32:
