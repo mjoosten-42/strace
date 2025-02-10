@@ -5,11 +5,10 @@
 
 static const t_syscall_prototype test[][SYSCALL_MAX] = {
 	{
-		{ "read", 0, { Long, 8 }, { } },
-//#include "32/prototypes.h"
+#include "32/prototypes.h"
 	},
 	{
-//#include "64/prototypes.h"
+#include "64/prototypes.h"
 	},
 };
 
@@ -27,3 +26,17 @@ const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr) 
 
 	return ret;
 }
+
+const char *get_format(enum e_type type) {
+	const char *formats[] = {
+		"%i",
+		"%u",
+		"%li",
+		"%lu",
+		"%p",
+		"%i", // Enum
+	};
+
+	return formats[type];
+}
+

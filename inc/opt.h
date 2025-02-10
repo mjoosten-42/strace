@@ -3,6 +3,7 @@
 
 typedef struct {
 	unsigned int summary : 1;
+	unsigned int time : 1;
 } opt_t;
 
 #endif

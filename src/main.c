@@ -3,6 +3,7 @@
 #include "opt.h"
 #include "strace.h"
 
+#include <sys/wait.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,24 +12,42 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
+	const char *program = basename(argv[0]);
 	opt_t opt = { 0 };
-	pid_t pid = 0;
-	int	  i	  = 1;
+	pid_t pid;
+	int c;
 
-	if (argc >= 2 && !strncmp(argv[1], "-c", 2)) {
-		opt.summary = 1;
-		i++;
+	while ((c = getopt(argc, argv, "chT")) != -1) {
+		switch (c) {
+			case 'c':
+				opt.summary = 1;
+				break;
+			case 'h':
+				printf("usage: %s: [-chT] PROG [ARGS]\n", program);
+				return EXIT_FAILURE;
+			case 'T':
+				opt.time = 1;
+				break;
+			default:
+				break;
+		};
 	}
 
-	if (argc < i + 1) {
-		eprintf("%s: must have PROG [ARGS]\n", basename(argv[0]));
+	if (opt.time && opt.summary) {
+		eprintf("%s: -T has no effect with -c\n", program);
+	}
+
+	const char *command = argv[optind];
+
+	if (!command) {
+		eprintf("%s: must have PROG [ARGS]\n", program);
 		return EXIT_FAILURE;
 	}
 
-	const char *path = which(argv[i]);
+	const char *path = which(command);
 
 	if (!path) {
-		eprintf("%s: Can't stat '%s': %s\n", basename(argv[0]), argv[i], strerror(errno));
+		eprintf("%s: Can't stat '%s': %s\n", program, command, strerror(errno));
 		return EXIT_FAILURE;
 	}
 
@@ -36,13 +55,11 @@ int main(int argc, char **argv) {
 
 	if (!pid) {
 		CHECK_SYSCALL(raise(SIGSTOP));
-		CHECK_SYSCALL(execv(path, argv + i));
+		CHECK_SYSCALL(execv(path, argv + optind));
 	}
 
-	// eprintf("parent: %d\n", getpid());
-	// eprintf("child:  %d\n", pid);
-
 	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD));
+	CHECK_SYSCALL(waitpid(pid, NULL, 0));
 
 	return trace(pid, &opt);
 }
