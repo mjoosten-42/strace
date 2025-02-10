@@ -1,14 +1,16 @@
 global _start
 
+%include "defines.s"
+
 _start:
-	mov	rax, 39		; getpid
+	mov	rax, getpid
 	syscall
 
 	mov	rdi, rax
-	mov rax, 62		; kill
-	mov rsi, 17		; SIGCHLD (ignored)
+	mov rax, kill
+	mov rsi, SIGCHLD
 	syscall
 
-	mov rax, 60		; exit
+	mov rax, exit
 	mov	rdi, 0
 	syscall

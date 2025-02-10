@@ -1,8 +1,8 @@
-FILES = $(basename $(shell find . -name '*.s'))
+FILES = $(basename $(shell find . -name '*.s' ! -name "defines.s"))
 
 all: $(FILES)
 
-$(FILES): %: %.s
+$(FILES): %: %.s defines.s
 	nasm -f elf64 -o $@.o $< && ld -o $@ $@.o
 
 clean:

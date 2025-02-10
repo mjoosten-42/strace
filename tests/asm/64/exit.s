@@ -1,6 +1,8 @@
 global _start
 
+%include "defines.s"
+
 _start:
-	mov	rax, 60
-	mov	rdi, 0
+	mov	rax, exit
+	mov	rdi, 1
 	syscall

@@ -3,8 +3,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#define GB (1024 * 1024 * 1024UL)
-#define AMOUNT (1 * GB)
+#define MB (1024 * 1024UL)
+#define AMOUNT (128 * MB)
 
 size_t sum(int fd, char *buf, size_t bufsize);
 
@@ -23,6 +23,7 @@ int main() {
 		printf("\r%lu",	sum(fd, buf, AMOUNT));
 	}
 
+	printf("\n");
 	free(buf);
 }
 

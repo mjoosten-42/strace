@@ -1,14 +1,12 @@
 global _start
 
-%define SIGALRM 14
-%define sigaction 13
-%define SA_RESTORER 0x04000000
+%include "defines.s"
 
 handler:
 	ret
 
 restorer:
-	mov rax, 15
+	mov rax, sigreturn
 	syscall
 
 _start:
@@ -30,13 +28,13 @@ _start:
 	mov r10, 8
 	syscall
 
-	mov	rax, 37		; alarm
+	mov	rax, alarm
 	mov	rdi, 1
 	syscall
 
-	mov	rax, 34		; pause
+	mov	rax, pause
 	syscall
 
-	mov	rax, 60		; exit
+	mov	rax, exit
 	mov	rdi, 0
 	syscall

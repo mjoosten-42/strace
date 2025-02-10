@@ -1,12 +1,14 @@
 global _start
 
+%include "defines.s"
+
 _start:
 	push QWORD 800000000
 	push QWORD 1
-	mov	rax, 35		; nanosleep
+	mov	rax, nanosleep
 	mov rdi, rsp
 	syscall
 	
-	mov	rax, 60
+	mov	rax, exit
 	mov	rdi, 0
 	syscall
