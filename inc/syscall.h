@@ -9,6 +9,7 @@ enum e_type {
 	Long,
 	ULong,
 	Pointer,
+	Enum,
 };
 
 typedef struct s_syscall_arg {

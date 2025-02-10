@@ -4,6 +4,7 @@
 #include "opt.h"
 #include "strace.h"
 #include "syscall.h"
+#include "count.h"
 
 #include <elf.h>
 #include <limits.h>
@@ -15,14 +16,15 @@
 #include <sys/uio.h>
 #include <sys/user.h>
 #include <sys/wait.h>
+#include <time.h>
 
 int trace(pid_t pid, const opt_t *opt) {
 	e_arch arch	   = X64;
 	int	   running = 0;
 	int	   status  = 0;
 	void	 *data	   = NULL;
-
-	CHECK_SYSCALL(waitpid(pid, &status, 0));
+	struct timespec start = { 0 };
+	counts_t counts = { 0 };
 
 	while (1) {
 		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, NULL, data));
@@ -30,14 +32,8 @@ int trace(pid_t pid, const opt_t *opt) {
 
 		data = NULL;
 
-		// Forward signals to tracee
-		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
-			data = (void *)(long)WSTOPSIG(status);
-		}
-
-		int signalled = !(WIFSTOPPED(status) && WSTOPSIG(status) & 0x80);
-
-		if (signalled && running) {
+		// Syscall interrupted
+		if (!(WIFSTOPPED(status) && WSTOPSIG(status) & 0x80) && running) {
 			if (!opt->summary) {
 				eprintf("?\n");
 			}
@@ -57,9 +53,13 @@ int trace(pid_t pid, const opt_t *opt) {
 		// Tracee terminated by deadly signal
 		if (WIFSIGNALED(status)) {
 			if (!opt->summary) {
-				eprintf("+++ killed by SIG%s %s+++\n",
-						sigabbrev_np(WTERMSIG(status)),
-						WCOREDUMP(status) ? "(core dumped) " : "");
+				eprintf("+++ killed by SIG%s ", sigabbrev_np(WTERMSIG(status)));
+
+				if (WCOREDUMP(status)) {
+					eprintf("(core dumped) ");
+				}
+
+				eprintf("+++\n");
 			}
 
 			break;
@@ -79,14 +79,15 @@ int trace(pid_t pid, const opt_t *opt) {
 				if (siginfo.si_code > 0) {
 					eprintf("SI_KERNEL");
 				} else {
-					eprintf("SI_USER, si_pid = %i, si_uid = %i", siginfo.si_pid, siginfo.si_uid);
+					eprintf("SI_USER, si_pid=%i, si_uid=%i", siginfo.si_pid, siginfo.si_uid);
 				}
-
-				eprintf(" } ---\n");
 			}
+
+			// Forward signals to tracee
+			data = (void *)(long)WSTOPSIG(status);
 		}
-		// Syscall start-stop
-		else {
+
+		if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80) {
 			u_regs regs = { 0 };
 
 			get_regs(pid, &regs);
@@ -99,17 +100,60 @@ int trace(pid_t pid, const opt_t *opt) {
 				}
 			}
 
+			if (opt->summary || opt->time) {
+				struct timespec current = { 0 };
+
+				CHECK_SYSCALL(clock_gettime(CLOCK_MONOTONIC, &current));
+
+				if (!running) {
+					start = current;
+				} else {
+					tv_sub(&current, &start);
+
+					count_t *count = NULL;
+
+					switch (regs.arch) {
+						case X32:
+							count = &counts.count_32[regs.nr];
+							break;
+						case X64:
+							count = &counts.count_64[regs.nr];
+							break;
+					};
+
+					count->nr = regs.nr;
+					count->calls++;
+					tv_add(&count->total, &current);
+
+					if (regs.ret < 0) {
+						count->errors++;
+					}
+
+					if (opt->time) {
+						eprintf(" <%li.%06li>", current.tv_sec, current.tv_nsec / 1000);
+					}
+				}
+			}
+		
+			if (!opt->summary && running) {
+				eprintf("\n");
+			}
+
+			running = !running;
+			
 			if (regs.arch != arch) {
 				arch = regs.arch;
 
 				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
 			}
-
-			running = !running;
 		}
 	}
 
-	return WEXITSTATUS(status);
+	if (opt->summary) {
+		count(&counts);
+	}
+
+	return status;
 }
 
 void get_regs(pid_t pid, u_regs *regs) {
@@ -170,24 +214,24 @@ void on_syscall_end(const u_regs *regs) {
 	if (ret < 0) {
 		eprintf("%s %s (%s)", strerrorname_np(-ret) ? "-1" : "?", strerrorname(-ret), strerrordesc(-ret));
 	} else {
-		eprintf(prototype->ret.format, ret);
+		eprintf(get_format(prototype->ret.type), ret);
 	}
-
-	eprintf("\n");
 }
 
 void print_syscall(const t_syscall_prototype *prototype, long args[6]) {
 	eprintf("%s(", prototype->name);
 
 	for (int i = 0; i < prototype->argc; i++) {
+		t_syscall_arg arg = prototype->args[i];
+
 		// print program name on first execve
 		ONCE(eprintf("\"%s\", ", (char *)args[i++]));
 
 		// TODO; print 32 bit pointers with correct size
-		if (!strcmp(prototype->args[i].format, "%lu") && args[i] > 0x10000000) {
+		if (arg.type == Pointer && args[i] > 0x10000000) {
 			eprintf("%p", (void *)args[i]);
 		} else {
-			eprintf(prototype->args[i].format, args[i]);
+			eprintf(get_format(arg.type), args[i]);
 		}
 
 		if (i < prototype->argc - 1) {

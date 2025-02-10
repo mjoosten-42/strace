@@ -30,6 +30,7 @@ const char *which(const char *filename) {
 		size_t dirlen = colon - paths;
 		size_t len	  = dirlen + 1 + filelen;
 
+		// Dynamically reallocate
 		if (len + 1 > cap) {
 			cap *= 2;
 			path = realloc(path, cap);

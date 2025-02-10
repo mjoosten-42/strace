@@ -43,14 +43,12 @@ void print_syscall(const t_syscall_prototype *prototype, long args[6]);
 void print_nosys(int nr, long args[6]);
 
 const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr);
+const char *get_format(enum e_type type);
 
 const char *strerrorname(int error);
 const char *strerrordesc(int error);
 const char *syscall_name(int number);
 
 const char *which(const char *filename);
-
-void tv_add(struct timespec *out, struct timespec *first, struct timespec *second);
-void tv_sub(struct timespec *out, struct timespec *first, struct timespec *second);
 
 #endif

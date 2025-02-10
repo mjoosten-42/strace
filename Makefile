@@ -67,6 +67,9 @@ scan: clean
 ctags:
 	ctags $(SOURCES) $(HEADERS)
 
-.PHONY: all test clean fclean re files print format scan ctags
+complete:
+	complete -o default -F _strace ./ft_strace
+
+.PHONY: all test clean fclean re files print format scan ctags complete
 
 -include $(OBJECTS:.o=.d)
