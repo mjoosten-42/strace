@@ -34,9 +34,8 @@
 		}                    \
 	} while (0)
 
-#define MAX_ARGS 6
-
 typedef struct {
+	pid_t	  pid;
 	int		  status;
 	int		  running;
 	int		  interrupt;
@@ -46,10 +45,7 @@ typedef struct {
 const char *opts(int argc, char **argv, opt_t *opt);
 const char *which(const char *filename);
 
-void handler(int signum);
-void terminate();
-
-int trace(pid_t pid, data_t *data, const opt_t *opt);
+int trace(data_t *data, const opt_t *opt);
 
 void get_regs(pid_t pid, u_regs *regs);
 

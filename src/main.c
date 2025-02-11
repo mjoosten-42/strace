@@ -12,12 +12,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-opt_t  opt	= { 0 };
 data_t data = { 0 };
+opt_t  opt	= { 0 };
+
+void handler(int signum) {
+	data.interrupt = signum;
+}
 
 int main(int argc, char **argv) {
-	pid_t pid;
-
 	const char *command = opts(argc, argv, &opt);
 	const char *program = basename(argv[0]);
 
@@ -33,9 +35,9 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	CHECK_SYSCALL(pid = fork());
+	CHECK_SYSCALL(data.pid = fork());
 
-	if (!pid) {
+	if (!data.pid) {
 		CHECK_SYSCALL(raise(SIGSTOP));
 		CHECK_SYSCALL(execv(path, argv + optind));
 	}
@@ -45,10 +47,10 @@ int main(int argc, char **argv) {
 	CHECK_SYSCALL(sigaction(SIGQUIT, &sa, NULL));
 	CHECK_SYSCALL(sigaction(SIGTERM, &sa, NULL));
 
-	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD));
-	CHECK_SYSCALL(waitpid(pid, NULL, 0));
+	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, data.pid, NULL, PTRACE_O_TRACESYSGOOD));
+	CHECK_SYSCALL(waitpid(data.pid, NULL, 0));
 
-	return trace(pid, &data, &opt);
+	return trace(&data, &opt);
 }
 
 const char *opts(int argc, char **argv, opt_t *opt) {
@@ -74,21 +76,4 @@ const char *opts(int argc, char **argv, opt_t *opt) {
 	}
 
 	return argv[optind];
-}
-
-void handler(int signum) {
-	data.interrupt = signum;
-}
-
-void terminate() {
-	if (data.running) {
-		eprintf("\n");
-		data.running = 0;
-	}
-
-	if (opt.summary) {
-		summarize(&data.summary);
-	}
-
-	exit(data.status);
 }

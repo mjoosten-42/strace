@@ -18,15 +18,15 @@
 #include <sys/user.h>
 #include <sys/wait.h>
 
-int trace(pid_t pid, data_t *td, const opt_t *opt) {
+int trace(data_t *td, const opt_t *opt) {
 	e_arch		   arch	 = ARCH_X86_64;
 	void		  *data	 = NULL;
 	struct timeval start = { 0 };
 	struct rusage  ru	 = { 0 };
 
 	while (1) {
-		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, NULL, data));
-		CHECK_SYSCALL(wait4(pid, &td->status, 0, opt->summary ? &ru : NULL));
+		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, td->pid, NULL, data));
+		CHECK_SYSCALL(wait4(td->pid, &td->status, 0, opt->summary ? &ru : NULL));
 
 		data = NULL;
 
@@ -67,7 +67,7 @@ int trace(pid_t pid, data_t *td, const opt_t *opt) {
 		if (WIFSTOPPED(td->status) && !(WSTOPSIG(td->status) & 0x80)) {
 			siginfo_t siginfo = { 0 };
 
-			CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
+			CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, td->pid, NULL, &siginfo));
 
 			const char *abbr = sigabbrev_np(siginfo.si_signo);
 
@@ -91,7 +91,7 @@ int trace(pid_t pid, data_t *td, const opt_t *opt) {
 		if (WIFSTOPPED(td->status) && WSTOPSIG(td->status) & 0x80) {
 			u_regs regs = { 0 };
 
-			get_regs(pid, &regs);
+			get_regs(td->pid, &regs);
 
 			if (!opt->suppress) {
 				if (!td->running) {
@@ -135,7 +135,7 @@ int trace(pid_t pid, data_t *td, const opt_t *opt) {
 			if (regs.arch != arch) {
 				arch = regs.arch;
 
-				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == ARCH_X86_64 ? "64" : "32");
+				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", td->pid, arch == ARCH_X86_64 ? "64" : "32");
 			}
 		}
 
@@ -172,7 +172,7 @@ void get_regs(pid_t pid, u_regs *regs) {
 }
 
 void on_syscall_start(const u_regs *regs) {
-	long args[6] = { 0 };
+	long args[MAX_ARGS] = { 0 };
 
 	switch (regs->arch) {
 		case ARCH_I386:

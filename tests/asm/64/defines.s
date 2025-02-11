@@ -24,6 +24,9 @@
 %define SIGCHLD 17
 %define SIGCONT 18
 %define SIGSTOP 19
+%define SIGTSTP 20
+%define SIGTTIN 21
+%define SIGTTOU 22
 
 %define SA_RESTORER 0x04000000
 
