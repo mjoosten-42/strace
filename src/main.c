@@ -2,42 +2,24 @@
 
 #include "opt.h"
 #include "strace.h"
+#include "summary.h"
 
-#include <sys/wait.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ptrace.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
+opt_t  opt	= { 0 };
+data_t data = { 0 };
+
 int main(int argc, char **argv) {
-	const char *program = basename(argv[0]);
-	opt_t opt = { 0 };
 	pid_t pid;
-	int c;
 
-	while ((c = getopt(argc, argv, "chT")) != -1) {
-		switch (c) {
-			case 'c':
-				opt.summary = 1;
-				break;
-			case 'h':
-				printf("usage: %s: [-chT] PROG [ARGS]\n", program);
-				return EXIT_FAILURE;
-			case 'T':
-				opt.time = 1;
-				break;
-			default:
-				break;
-		};
-	}
-
-	if (opt.time && opt.summary) {
-		eprintf("%s: -T has no effect with -c\n", program);
-	}
-
-	const char *command = argv[optind];
+	const char *command = opts(argc, argv, &opt);
+	const char *program = basename(argv[0]);
 
 	if (!command) {
 		eprintf("%s: must have PROG [ARGS]\n", program);
@@ -58,8 +40,55 @@ int main(int argc, char **argv) {
 		CHECK_SYSCALL(execv(path, argv + optind));
 	}
 
+	struct sigaction sa = { .sa_handler = handler };
+	CHECK_SYSCALL(sigaction(SIGINT, &sa, NULL));
+	CHECK_SYSCALL(sigaction(SIGQUIT, &sa, NULL));
+	CHECK_SYSCALL(sigaction(SIGTERM, &sa, NULL));
+
 	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, pid, NULL, PTRACE_O_TRACESYSGOOD));
 	CHECK_SYSCALL(waitpid(pid, NULL, 0));
 
-	return trace(pid, &opt);
+	return trace(pid, &data, &opt);
+}
+
+const char *opts(int argc, char **argv, opt_t *opt) {
+	const char *program	  = basename(argv[0]);
+	const char *optstring = "cCh";
+	int			c;
+
+	while ((c = getopt(argc, argv, optstring)) != -1) {
+		switch (c) {
+			case 'C':
+				opt->summary = 1;
+				break;
+			case 'c':
+				opt->summary  = 1;
+				opt->suppress = 1;
+				break;
+			case 'h':
+				printf("usage: %s: [-%s] PROG [ARGS]\n", program, optstring);
+				exit(EXIT_FAILURE);
+			default:
+				break;
+		};
+	}
+
+	return argv[optind];
+}
+
+void handler(int signum) {
+	data.interrupt = signum;
+}
+
+void terminate() {
+	if (data.running) {
+		eprintf("\n");
+		data.running = 0;
+	}
+
+	if (opt.summary) {
+		summarize(&data.summary);
+	}
+
+	exit(data.status);
 }

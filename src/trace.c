@@ -3,8 +3,8 @@
 #include "arch.h"
 #include "opt.h"
 #include "strace.h"
+#include "summary.h"
 #include "syscall.h"
-#include "count.h"
 
 #include <elf.h>
 #include <limits.h>
@@ -13,49 +13,47 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ptrace.h>
+#include <sys/resource.h>
 #include <sys/uio.h>
 #include <sys/user.h>
 #include <sys/wait.h>
-#include <time.h>
 
-int trace(pid_t pid, const opt_t *opt) {
-	e_arch arch	   = X64;
-	int	   running = 0;
-	int	   status  = 0;
-	void	 *data	   = NULL;
-	struct timespec start = { 0 };
-	counts_t counts = { 0 };
+int trace(pid_t pid, data_t *td, const opt_t *opt) {
+	e_arch		   arch	 = ARCH_X86_64;
+	void		  *data	 = NULL;
+	struct timeval start = { 0 };
+	struct rusage  ru	 = { 0 };
 
 	while (1) {
 		CHECK_SYSCALL(ptrace(PTRACE_SYSCALL, pid, NULL, data));
-		CHECK_SYSCALL(waitpid(pid, &status, 0));
+		CHECK_SYSCALL(wait4(pid, &td->status, 0, opt->summary ? &ru : NULL));
 
 		data = NULL;
 
 		// Syscall interrupted
-		if (!(WIFSTOPPED(status) && WSTOPSIG(status) & 0x80) && running) {
-			if (!opt->summary) {
+		if (!(WIFSTOPPED(td->status) && WSTOPSIG(td->status) & 0x80) && td->running) {
+			if (!opt->suppress) {
 				eprintf("?\n");
 			}
 
-			running = 0;
+			td->running = 0;
 		}
 
 		// Tracee exited
-		if (WIFEXITED(status)) {
-			if (!opt->summary) {
-				eprintf("+++ exited with %i +++\n", WEXITSTATUS(status));
+		if (WIFEXITED(td->status)) {
+			if (!opt->suppress) {
+				eprintf("+++ exited with %i +++\n", WEXITSTATUS(td->status));
 			}
 
 			break;
 		}
 
 		// Tracee terminated by deadly signal
-		if (WIFSIGNALED(status)) {
-			if (!opt->summary) {
-				eprintf("+++ killed by SIG%s ", sigabbrev_np(WTERMSIG(status)));
+		if (WIFSIGNALED(td->status)) {
+			if (!opt->suppress) {
+				eprintf("+++ killed by SIG%s ", sigabbrev_np(WTERMSIG(td->status)));
 
-				if (WCOREDUMP(status)) {
+				if (WCOREDUMP(td->status)) {
 					eprintf("(core dumped) ");
 				}
 
@@ -66,14 +64,14 @@ int trace(pid_t pid, const opt_t *opt) {
 		}
 
 		// Tracee stopped by signal
-		if (WIFSTOPPED(status) && !(WSTOPSIG(status) & 0x80)) {
+		if (WIFSTOPPED(td->status) && !(WSTOPSIG(td->status) & 0x80)) {
 			siginfo_t siginfo = { 0 };
 
 			CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, pid, NULL, &siginfo));
 
 			const char *abbr = sigabbrev_np(siginfo.si_signo);
 
-			if (!opt->summary) {
+			if (!opt->suppress) {
 				eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
 
 				if (siginfo.si_code > 0) {
@@ -81,79 +79,76 @@ int trace(pid_t pid, const opt_t *opt) {
 				} else {
 					eprintf("SI_USER, si_pid=%i, si_uid=%i", siginfo.si_pid, siginfo.si_uid);
 				}
+
+				eprintf(" } ---\n");
 			}
 
 			// Forward signals to tracee
-			data = (void *)(long)WSTOPSIG(status);
+			data = (void *)(long)WSTOPSIG(td->status);
 		}
 
-		if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80) {
+		// Syscall start-stop
+		if (WIFSTOPPED(td->status) && WSTOPSIG(td->status) & 0x80) {
 			u_regs regs = { 0 };
 
 			get_regs(pid, &regs);
 
-			if (!opt->summary) {
-				if (!running) {
+			if (!opt->suppress) {
+				if (!td->running) {
 					on_syscall_start(&regs);
 				} else {
 					on_syscall_end(&regs);
 				}
 			}
 
-			if (opt->summary || opt->time) {
-				struct timespec current = { 0 };
-
-				CHECK_SYSCALL(clock_gettime(CLOCK_MONOTONIC, &current));
-
-				if (!running) {
-					start = current;
+			// Time
+			if (opt->summary) {
+				if (!td->running) {
+					start = ru.ru_stime;
 				} else {
-					tv_sub(&current, &start);
-
 					count_t *count = NULL;
 
 					switch (regs.arch) {
-						case X32:
-							count = &counts.count_32[regs.nr];
+						case ARCH_I386:
+							count = &td->summary.count_32[regs.nr];
 							break;
-						case X64:
-							count = &counts.count_64[regs.nr];
+						case ARCH_X86_64:
+							count = &td->summary.count_64[regs.nr];
 							break;
 					};
 
 					count->nr = regs.nr;
 					count->calls++;
-					tv_add(&count->total, &current);
+					count->errors += (regs.ret < 0);
 
-					if (regs.ret < 0) {
-						count->errors++;
-					}
-
-					if (opt->time) {
-						eprintf(" <%li.%06li>", current.tv_sec, current.tv_nsec / 1000);
-					}
+					tv_sub(&ru.ru_stime, &start);
+					tv_add(&count->time, &ru.ru_stime);
 				}
 			}
-		
-			if (!opt->summary && running) {
+
+			if (!opt->suppress && td->running) {
 				eprintf("\n");
 			}
 
-			running = !running;
-			
+			td->running = !td->running;
+
 			if (regs.arch != arch) {
 				arch = regs.arch;
 
-				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == X64 ? "64" : "32");
+				eprintf("[ Process PID=%i runs in %s bit mode. ]\n", pid, arch == ARCH_X86_64 ? "64" : "32");
 			}
+		}
+
+		if (td->interrupt) {
+			break;
 		}
 	}
 
 	if (opt->summary) {
-		count(&counts);
+		summarize(&td->summary);
 	}
 
-	return status;
+	return td->status;
 }
 
 void get_regs(pid_t pid, u_regs *regs) {
@@ -162,14 +157,14 @@ void get_regs(pid_t pid, u_regs *regs) {
 	// read registers
 	CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
 
-	regs->arch = (iov.iov_len == sizeof(regs->x86_64) ? X64 : X32);
+	regs->arch = (iov.iov_len == sizeof(regs->x86_64) ? ARCH_X86_64 : ARCH_I386);
 
 	switch (regs->arch) {
-		case X32:
+		case ARCH_I386:
 			regs->nr  = regs->x86.orig_eax;
 			regs->ret = regs->x86.eax;
 			break;
-		case X64:
+		case ARCH_X86_64:
 			regs->nr  = regs->x86_64.orig_rax;
 			regs->ret = regs->x86_64.rax;
 			break;
@@ -180,21 +175,21 @@ void on_syscall_start(const u_regs *regs) {
 	long args[6] = { 0 };
 
 	switch (regs->arch) {
-		case X64:
-			args[0] = regs->x86_64.rdi;
-			args[1] = regs->x86_64.rsi;
-			args[2] = regs->x86_64.rdx;
-			args[3] = regs->x86_64.r10;
-			args[5] = regs->x86_64.r8;
-			args[5] = regs->x86_64.r9;
-			break;
-		case X32:
+		case ARCH_I386:
 			args[0] = regs->x86.ebx;
 			args[1] = regs->x86.ecx;
 			args[2] = regs->x86.edx;
 			args[3] = regs->x86.esi;
 			args[4] = regs->x86.edi;
 			args[5] = regs->x86.ebp;
+			break;
+		case ARCH_X86_64:
+			args[0] = regs->x86_64.rdi;
+			args[1] = regs->x86_64.rsi;
+			args[2] = regs->x86_64.rdx;
+			args[3] = regs->x86_64.r10;
+			args[5] = regs->x86_64.r8;
+			args[5] = regs->x86_64.r9;
 			break;
 	};
 
@@ -218,7 +213,7 @@ void on_syscall_end(const u_regs *regs) {
 	}
 }
 
-void print_syscall(const t_syscall_prototype *prototype, long args[6]) {
+void print_syscall(const t_syscall_prototype *prototype, long args[MAX_ARGS]) {
 	eprintf("%s(", prototype->name);
 
 	for (int i = 0; i < prototype->argc; i++) {
@@ -242,11 +237,11 @@ void print_syscall(const t_syscall_prototype *prototype, long args[6]) {
 	eprintf(") = ");
 }
 
-void print_nosys(int nr, long args[6]) {
+void print_nosys(int nr, long args[MAX_ARGS]) {
 	eprintf("syscall_%#x(", nr);
 
-	for (int i = 0; i < 6; i++) {
-		eprintf("%#lx%s", args[i], i < 5 ? ", " : "");
+	for (int i = 0; i < MAX_ARGS; i++) {
+		eprintf("%#lx%s", args[i], i < MAX_ARGS - 1 ? ", " : "");
 	}
 
 	eprintf(") = ");

@@ -3,6 +3,6 @@ HEADERS := \
 	inc/syscall.h \
 	inc/arch.h \
 	inc/strace.h \
-	inc/count.h \
 	inc/opt.h \
+	inc/summary.h \
 	inc/32/prototypes.h \

@@ -11,8 +11,8 @@
 #define SYSCALL_MAX MAX(SYSCALL_X86_MAX, SYSCALL_X86_64_MAX)
 
 typedef enum {
-	X32,
-	X64,
+	ARCH_I386,
+	ARCH_X86_64,
 } e_arch;
 
 typedef struct {

@@ -14,7 +14,7 @@ enum e_type {
 
 typedef struct s_syscall_arg {
 	enum e_type type;
-	int	 size;
+	int			size;
 } t_syscall_arg;
 
 typedef struct s_syscall_prototype {

@@ -1,4 +1,5 @@
 #include "syscall.h"
+
 #include "arch.h"
 
 #include <stddef.h>
@@ -29,14 +30,9 @@ const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr) 
 
 const char *get_format(enum e_type type) {
 	const char *formats[] = {
-		"%i",
-		"%u",
-		"%li",
-		"%lu",
-		"%p",
+		"%i", "%u", "%li", "%lu", "%p",
 		"%i", // Enum
 	};
 
 	return formats[type];
 }
-
