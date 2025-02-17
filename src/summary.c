@@ -1,5 +1,6 @@
 #include "summary.h"
 
+#include "algorithm.h"
 #include "arch.h"
 #include "strace.h"
 
@@ -12,32 +13,24 @@
 // clang-format off
 #define HEADER "% time     seconds  usecs/call     calls    errors syscall"
 #define LINE   "------ ----------- ----------- --------- --------- ----------------"
-
 // clang-format on
 
-void summarize(summary_t *summary) {
-	// Set locale to user desired
-	setlocale(LC_ALL, "");
+int was_called(void *p);
 
+void summarize(summary_t *summary) {
 	int archs = 0;
 
-	for (int i = 0; i < SYSCALL_X86_64_MAX; i++) {
-		if (summary->count_64[i].calls) {
-			summarize_arch(summary->count_64, SYSCALL_X86_64_MAX, ARCH_X86_64);
-			archs++;
-			break;
-		}
+	if (any(summary->count_64, SYSCALL_X86_64_MAX, sizeof(*summary->count_64), was_called)) {
+		summarize_arch(summary->count_64, SYSCALL_X86_64_MAX, ARCH_X86_64);
+		archs++;
 	}
 
-	for (int i = 0; i < SYSCALL_X86_MAX; i++) {
-		if (summary->count_32[i].calls) {
-			if (i) {
-				eprintf("System call usage summary for 32 bit mode:\n");
-			}
-
-			summarize_arch(summary->count_32, SYSCALL_X86_MAX, ARCH_I386);
-			break;
+	if (any(summary->count_32, SYSCALL_X86_MAX, sizeof(*summary->count_32), was_called)) {
+		if (archs) {
+			eprintf("System call usage summary for 32 bit mode:\n");
 		}
+
+		summarize_arch(summary->count_32, SYSCALL_X86_MAX, ARCH_I386);
 	}
 }
 
@@ -86,6 +79,10 @@ void summarize_arch(count_t *array, int size, e_arch arch) {
 
 	eprintf("%s\n", LINE);
 	eprintf("%.2f\n", 100.0f);
+}
+
+int was_called(void *p) {
+	return ((count_t *)p)->calls;
 }
 
 void tv_add(struct timeval *first, struct timeval *second) {

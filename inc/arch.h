@@ -5,14 +5,14 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#define SYSCALL_X86_MAX 466
 #define SYSCALL_X86_64_MAX 548
+#define SYSCALL_X86_MAX 466
 
 #define SYSCALL_MAX MAX(SYSCALL_X86_MAX, SYSCALL_X86_64_MAX)
 
 typedef enum {
+	ARCH_X86_64 = 0,
 	ARCH_I386,
-	ARCH_X86_64,
 } e_arch;
 
 typedef struct {
@@ -21,26 +21,6 @@ typedef struct {
 	long   ret;
 
 	union {
-		struct {
-			int32_t ebx;
-			int32_t ecx;
-			int32_t edx;
-			int32_t esi;
-			int32_t edi;
-			int32_t ebp;
-			int32_t eax;
-			int32_t xds;
-			int32_t xes;
-			int32_t xfs;
-			int32_t xgs;
-			int32_t orig_eax;
-			int32_t eip;
-			int32_t xcs;
-			int32_t eflags;
-			int32_t esp;
-			int32_t xss;
-		} x86;
-
 		struct {
 			uint64_t r15;
 			uint64_t r14;
@@ -70,6 +50,26 @@ typedef struct {
 			uint64_t fs;
 			uint64_t gs;
 		} x86_64;
+
+		struct {
+			int32_t ebx;
+			int32_t ecx;
+			int32_t edx;
+			int32_t esi;
+			int32_t edi;
+			int32_t ebp;
+			int32_t eax;
+			int32_t xds;
+			int32_t xes;
+			int32_t xfs;
+			int32_t xgs;
+			int32_t orig_eax;
+			int32_t eip;
+			int32_t xcs;
+			int32_t eflags;
+			int32_t esp;
+			int32_t xss;
+		} x86;
 	};
 } u_regs;
 

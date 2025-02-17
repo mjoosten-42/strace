@@ -1,6 +1,7 @@
 %define poll 7
 %define brk 12
 %define sigaction 13
+%define sigprocmask 14
 %define sigreturn 15
 %define pause 34
 %define nanosleep 35
@@ -29,6 +30,8 @@
 %define SIGTTOU 22
 
 %define SA_RESTORER 0x04000000
+
+%define SIG_BLOCK 0 
 
 %define SIG_DFL	0
 %define SIG_IGN	1

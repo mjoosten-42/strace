@@ -5,6 +5,7 @@
 #include "summary.h"
 
 #include <errno.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,11 +16,9 @@
 data_t data = { 0 };
 opt_t  opt	= { 0 };
 
-void handler(int signum) {
-	data.interrupt = signum;
-}
-
 int main(int argc, char **argv) {
+	CHECK_SYSCALL(setlocale(LC_ALL, ""));
+
 	const char *command = opts(argc, argv, &opt);
 	const char *program = basename(argv[0]);
 
@@ -47,9 +46,6 @@ int main(int argc, char **argv) {
 	CHECK_SYSCALL(sigaction(SIGQUIT, &sa, NULL));
 	CHECK_SYSCALL(sigaction(SIGTERM, &sa, NULL));
 
-	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, data.pid, NULL, PTRACE_O_TRACESYSGOOD));
-	CHECK_SYSCALL(waitpid(data.pid, NULL, 0));
-
 	return trace(&data, &opt);
 }
 
@@ -76,4 +72,8 @@ const char *opts(int argc, char **argv, opt_t *opt) {
 	}
 
 	return argv[optind];
+}
+
+void handler(int signum) {
+	data.interrupt = signum;
 }

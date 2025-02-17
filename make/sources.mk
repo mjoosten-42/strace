@@ -1,7 +1,8 @@
 SOURCES := \
+	src/errno.c \
+	src/algorithm.c \
+	src/main.c \
+	src/summary.c \
 	src/syscall.c \
 	src/which.c \
-	src/errno.c \
-	src/summary.c \
-	src/main.c \
 	src/trace.c \

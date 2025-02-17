@@ -6,9 +6,10 @@
 #include <sys/stat.h>
 
 const char *which(const char *filename) {
-	struct stat buf = { 0 };
+	const char *paths = getenv("PATH");
+	struct stat buf	  = { 0 };
 
-	if (strchr(filename, '/')) {
+	if (strchr(filename, '/') || !paths) {
 		if (stat(filename, &buf)) {
 			return NULL;
 		}
@@ -17,12 +18,11 @@ const char *which(const char *filename) {
 	}
 
 	size_t		cap		= PATH_MAX;
-	const char *paths	= getenv("PATH");
 	char		 *path	= malloc(cap);
 	size_t		filelen = strlen(filename);
 	const char *colon	= NULL;
 
-	if (!path || !paths) {
+	if (!path) {
 		return NULL;
 	}
 

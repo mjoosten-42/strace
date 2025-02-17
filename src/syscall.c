@@ -6,10 +6,10 @@
 
 static const t_syscall_prototype test[][SYSCALL_MAX] = {
 	{
-#include "32/prototypes.h"
+#include "64/prototypes.h"
 	},
 	{
-#include "64/prototypes.h"
+#include "32/prototypes.h"
 	},
 };
 

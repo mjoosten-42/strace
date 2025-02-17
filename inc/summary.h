@@ -14,8 +14,8 @@ typedef struct {
 } count_t;
 
 typedef struct {
-	count_t count_32[SYSCALL_X86_MAX];
 	count_t count_64[SYSCALL_X86_64_MAX];
+	count_t count_32[SYSCALL_X86_MAX];
 } summary_t;
 
 void summarize(summary_t *counts);
