@@ -15,39 +15,29 @@
 #include <unistd.h>
 
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define ptrace_syscall_info __ptrace_syscall_info
+#define SYSCALL_BIT 0x80
 
 #define CHECK_SYSCALL(call)                                                       \
 	do {                                                                          \
-		if ((long)(call) == -1 && errno != EINTR) {                               \
+		if ((long)(call) < 0L) {                                                  \
 			eprintf(#call ": %s: %s\n", strerrorname_np(errno), strerror(errno)); \
-			raise(SIGKILL);                                                       \
 		}                                                                         \
-	} while (0)
-
-#define ONCE(call)           \
-	do {                     \
-		static int flag = 1; \
-                             \
-		if (flag) {          \
-			(call);          \
-			flag = 0;        \
-		}                    \
 	} while (0)
 
 typedef struct {
 	pid_t pid;
 	int	  status;
 	int	  interrupt;
-	int	  restart_signal;
-	long ptrace_op;
+	int	  signal;
+	long  op;
 
-	e_arch		   arch;
 	int			   syscall;
+	unsigned int   arch;
 	struct rusage  ru;
 	struct timeval tv;
 
 	int running : 1;
-	int stopped : 1;
 	int initial_execve : 1;
 	int initial_sigstop : 1;
 
@@ -61,18 +51,18 @@ void handler(int signum);
 
 int trace(data_t *data, const opt_t *opt);
 
-void get_regs(pid_t pid, u_regs *regs);
+void get_regs(pid_t pid, struct ptrace_syscall_info *info);
 
 void on_syscall_start_stop(data_t *td, const opt_t *opt);
-void on_syscall_start(data_t *td, const u_regs *regs);
-void on_syscall_end(data_t *td, const u_regs *regs);
-void print_syscall(data_t *td, const t_syscall_prototype *prototype, long args[MAX_ARGS]);
-void print_nosys(int nr, long args[MAX_ARGS]);
-void print_initial_execve(long args[MAX_ARGS]);
+void on_syscall_start(data_t *td, const struct ptrace_syscall_info *info);
+void on_syscall_end(data_t *td, const struct ptrace_syscall_info *info);
+void print_syscall(data_t *td, const t_syscall_prototype *prototype, const struct ptrace_syscall_info *info);
+void print_nosys(const struct ptrace_syscall_info *info);
+void print_initial_execve(const struct ptrace_syscall_info *info);
 
 void on_signal_delivery_stop(data_t *td, const opt_t *opt, int sig);
 
-const t_syscall_prototype *syscall_get_prototype(e_arch arch, unsigned long nr);
+const t_syscall_prototype *syscall_get_prototype(int arch, int nr);
 const char				*get_format(enum e_type type);
 
 const char *strerrorname(int error);

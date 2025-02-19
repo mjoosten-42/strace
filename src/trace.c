@@ -8,7 +8,9 @@
 
 #include <elf.h>
 #include <limits.h>
+#include <linux/audit.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,19 +20,17 @@
 #include <sys/user.h>
 #include <sys/wait.h>
 
-#define SYSCALL_BIT 0x80
-
 int trace(data_t *td, const opt_t *opt) {
 	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, td->pid, NULL, PTRACE_O_TRACESYSGOOD));
 
 	while (!td->interrupt) {
 		CHECK_SYSCALL(wait4(td->pid, &td->status, 0, &td->ru));
 
-		td->restart_signal = 0;
-		td->ptrace_op = PTRACE_SYSCALL;
+		td->op	   = PTRACE_SYSCALL;
+		td->signal = 0;
 
 		// Syscall interrupted
-		if (!(WIFSTOPPED(td->status) && WSTOPSIG(td->status) & SYSCALL_BIT) && td->running) {
+		if (td->running && !(WIFSTOPPED(td->status) && WSTOPSIG(td->status) & SYSCALL_BIT)) {
 			if (!opt->suppress) {
 				eprintf("?\n");
 			}
@@ -65,7 +65,6 @@ int trace(data_t *td, const opt_t *opt) {
 		// Tracee received signal
 		if (WIFSTOPPED(td->status) && !(WSTOPSIG(td->status) & SYSCALL_BIT)) {
 			on_signal_delivery_stop(td, opt, WSTOPSIG(td->status));
-
 		}
 
 		// Syscall start-stop
@@ -73,8 +72,7 @@ int trace(data_t *td, const opt_t *opt) {
 			on_syscall_start_stop(td, opt);
 		}
 
-		eprintf(" [ Ptrace(%s, sig: %2d) ] ", td->ptrace_op == PTRACE_SYSCALL ? "PTRACE_SYSCALL" : "PTRACE_LISTEN", td->restart_signal);
-		CHECK_SYSCALL(ptrace(td->ptrace_op, td->pid, NULL, td->restart_signal));
+		ptrace(td->op, td->pid, NULL, td->signal);
 	}
 
 	if (opt->summary) {
@@ -85,165 +83,179 @@ int trace(data_t *td, const opt_t *opt) {
 }
 
 void on_syscall_start_stop(data_t *td, const opt_t *opt) {
-	u_regs regs = { 0 };
+	struct ptrace_syscall_info	s_info = { 0 };
+	struct ptrace_syscall_info *info   = &s_info;
 
-	get_regs(td->pid, &regs);
+	get_regs(td->pid, &s_info);
 
-	// Syscall entry
-	if (!td->running) {
-		td->syscall = regs.nr;
+	switch (info->op) {
+		case PTRACE_SYSCALL_INFO_ENTRY:
+			td->syscall = info->entry.nr;
 
-		if (!opt->suppress) {
-			on_syscall_start(td, &regs);
-		}
+			if (!opt->suppress) {
+				on_syscall_start(td, info);
+			}
 
-		if (opt->summary) {
-			td->tv = td->ru.ru_stime;
-		}
-	}
+			if (opt->summary) {
+				td->tv = td->ru.ru_stime;
+			}
 
-	// Syscall exit
-	if (td->running) {
-		if (!opt->suppress) {
-			on_syscall_end(td, &regs);
-		}
+			break;
+		case PTRACE_SYSCALL_INFO_EXIT:
+			if (!opt->suppress) {
+				on_syscall_end(td, info);
+			}
 
-		if (opt->summary) {
-			count_t *count = NULL;
+			if (opt->summary) {
+				count_t *count = NULL;
 
-			switch (td->arch) {
-				case ARCH_I386:
-					count = &td->summary.count_32[td->syscall];
-					break;
-				case ARCH_X86_64:
-					count = &td->summary.count_64[td->syscall];
-					break;
-			};
+				switch (td->arch) {
+					case AUDIT_ARCH_I386:
+						count = &td->summary.count_32[td->syscall];
+						break;
+					case AUDIT_ARCH_X86_64:
+						count = &td->summary.count_64[td->syscall];
+						break;
+				};
 
-			count->nr = td->syscall;
-			count->calls++;
-			count->errors += (regs.ret < 0);
+				count->nr = td->syscall;
+				count->calls++;
+				count->errors += info->exit.is_error;
 
-			tv_sub(&td->ru.ru_stime, &td->tv);
-			tv_add(&count->time, &td->ru.ru_stime);
-		}
+				tv_sub(&td->ru.ru_stime, &td->tv);
+				tv_add(&count->time, &td->ru.ru_stime);
+			}
 
-		td->syscall = -1;
+			td->syscall = -1;
+
+			break;
 	}
 
 	td->running = !td->running;
 
-	if (regs.arch != td->arch) {
-		td->arch = regs.arch;
+	if (td->arch != info->arch) {
+		td->arch = info->arch;
 
-		eprintf("[ Process PID=%i runs in %s bit mode. ]\n", td->pid, td->arch == ARCH_X86_64 ? "64" : "32");
+		eprintf("[ Process PID=%i runs in %s bit mode. ]\n", td->pid, td->arch == AUDIT_ARCH_X86_64 ? "64" : "32");
 	}
 }
 
-void get_regs(pid_t pid, u_regs *regs) {
-	struct iovec iov = { &regs->x86_64, sizeof(*regs) };
+void get_regs(pid_t pid, struct ptrace_syscall_info *info) {
+	static bool toggle = false;
 
-	// read registers
+	struct registers regs = { 0 };
+	struct iovec	 iov  = { &regs.x86_64, sizeof(regs) };
+
 	CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
 
+	info->op = !toggle ? PTRACE_SYSCALL_INFO_ENTRY : PTRACE_SYSCALL_INFO_EXIT;
+
+	toggle = !toggle;
+
 	switch (iov.iov_len) {
-		case sizeof(regs->x86_64):
-			regs->arch = ARCH_X86_64;
-			regs->nr   = regs->x86_64.orig_rax;
-			regs->ret  = regs->x86_64.rax;
+		case sizeof(regs.x86_64):
+			info->arch = AUDIT_ARCH_X86_64;
+
+			switch (info->op) {
+				case PTRACE_SYSCALL_INFO_ENTRY:
+					// rax has already been overwritten
+					info->entry.nr		= regs.x86_64.orig_rax;
+					info->entry.args[0] = regs.x86_64.rdi;
+					info->entry.args[1] = regs.x86_64.rsi;
+					info->entry.args[2] = regs.x86_64.rdx;
+					info->entry.args[3] = regs.x86_64.r10;
+					info->entry.args[5] = regs.x86_64.r8;
+					info->entry.args[5] = regs.x86_64.r9;
+					break;
+				case PTRACE_SYSCALL_INFO_EXIT:
+					info->exit.rval		= regs.x86_64.rax;
+					info->exit.is_error = info->exit.rval < 0;
+					break;
+			}
+
 			break;
-		case sizeof(regs->x86):
-			regs->arch = ARCH_I386;
-			regs->nr   = regs->x86.orig_eax;
-			regs->ret  = regs->x86.eax;
-			break;
-		default:
+		case sizeof(regs.i386):
+			info->arch = AUDIT_ARCH_I386;
+
+			switch (info->op) {
+				case PTRACE_SYSCALL_INFO_ENTRY:
+					info->entry.nr		= regs.i386.orig_eax;
+					info->entry.args[0] = regs.i386.ebx;
+					info->entry.args[1] = regs.i386.ecx;
+					info->entry.args[2] = regs.i386.edx;
+					info->entry.args[3] = regs.i386.esi;
+					info->entry.args[4] = regs.i386.edi;
+					info->entry.args[5] = regs.i386.ebp;
+					break;
+				case PTRACE_SYSCALL_INFO_EXIT:
+					info->exit.rval		= regs.i386.eax;
+					info->exit.is_error = regs.i386.eax < 0;
+					break;
+			}
+
 			break;
 	};
 }
 
-void on_syscall_start(data_t *td, const u_regs *regs) {
-	long args[MAX_ARGS] = { 0 };
-
-	switch (regs->arch) {
-		case ARCH_I386:
-			args[0] = regs->x86.ebx;
-			args[1] = regs->x86.ecx;
-			args[2] = regs->x86.edx;
-			args[3] = regs->x86.esi;
-			args[4] = regs->x86.edi;
-			args[5] = regs->x86.ebp;
-			break;
-		case ARCH_X86_64:
-			args[0] = regs->x86_64.rdi;
-			args[1] = regs->x86_64.rsi;
-			args[2] = regs->x86_64.rdx;
-			args[3] = regs->x86_64.r10;
-			args[5] = regs->x86_64.r8;
-			args[5] = regs->x86_64.r9;
-			break;
-	};
-
-	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, regs->nr);
+void on_syscall_start(data_t *td, const struct ptrace_syscall_info *info) {
+	const t_syscall_prototype *prototype = syscall_get_prototype(info->arch, info->entry.nr);
 
 	if (prototype) {
-		print_syscall(td, prototype, args);
+		print_syscall(td, prototype, info);
 	} else {
-		print_nosys(regs->nr, args);
-	}
-}
-
-void on_syscall_end(data_t *td, const u_regs *regs) {
-	const t_syscall_prototype *prototype = syscall_get_prototype(regs->arch, td->syscall);
-	long					   ret		 = regs->ret;
-
-	if (ret < 0) {
-		eprintf("%s %s (%s)", strerrorname_np(-ret) ? "-1" : "?", strerrorname(-ret), strerrordesc(-ret));
-	} else {
-		eprintf(get_format(prototype->ret.type), ret);
+		print_nosys(info);
 	}
 
-	eprintf("\n");
+	eprintf(") = ");
+	fflush(stderr);
 }
 
-void print_syscall(data_t *td, const t_syscall_prototype *prototype, long args[MAX_ARGS]) {
+void print_syscall(data_t *td, const t_syscall_prototype *prototype, const struct ptrace_syscall_info *info) {
 	eprintf("%s(", prototype->name);
 
 	if (!td->initial_execve) {
-		td->initial_execve = 1;
+		td->initial_execve = true;
 
-		return print_initial_execve(args);
+		return print_initial_execve(info);
 	}
 
 	for (int i = 0; i < prototype->argc; i++) {
-		t_syscall_arg arg = prototype->args[i];
+		unsigned long arg	   = info->entry.args[i];
+		t_syscall_arg arg_prot = prototype->args[i];
+
+		// Zero out upper 4 bytes if on 32-bit
+		if (info->arch == AUDIT_ARCH_I386) {
+			arg &= ((1L << 32) - 1);
+		}
 
 		// TODO; print 32 bit pointers with correct size
-		if (arg.type == Pointer && args[i] > 0x10000000) {
-			eprintf("%p", (void *)args[i]);
+		if (arg_prot.type == Pointer && arg > (td->arch == AUDIT_ARCH_I386 ? 0x10000 : 0x10000000)) {
+			eprintf("%p", (void *)arg);
 		} else {
-			eprintf(get_format(arg.type), args[i]);
+			if (arg_prot.type == Pointer && arg == 0) {
+				eprintf("NULL");
+			} else {
+				eprintf(get_format(arg_prot.type), arg);
+			}
 		}
 
 		if (i < prototype->argc - 1) {
 			eprintf(", ");
 		}
 	}
-
-	eprintf(") = ");
 }
 
-void print_nosys(int nr, long args[MAX_ARGS]) {
-	eprintf("syscall_%#x(", nr);
+void print_nosys(const struct ptrace_syscall_info *info) {
+	eprintf("syscall_%#lx(", info->entry.nr);
 
 	for (int i = 0; i < MAX_ARGS; i++) {
-		eprintf("%#lx%s", args[i], i < MAX_ARGS - 1 ? ", " : "");
+		eprintf("%#lx%s", info->entry.args[i], i < MAX_ARGS - 1 ? ", " : "");
 	}
-
-	eprintf(") = ");
 }
 
-void print_initial_execve(long args[MAX_ARGS]) {
+void print_initial_execve(const struct ptrace_syscall_info *info) {
+	const char **args = (const char **)(const void *)info->entry.args;
+
 	eprintf("\"%s\", [", (char *)args[0]);
 
 	char **argv = (char **)args[1];
@@ -261,45 +273,68 @@ void print_initial_execve(long args[MAX_ARGS]) {
 	eprintf("], %p /* %i vars */ ) = ", (void *)args[2], envc);
 }
 
+void on_syscall_end(data_t *td, const struct ptrace_syscall_info *info) {
+	const t_syscall_prototype *prototype = syscall_get_prototype(info->arch, td->syscall);
+	long					   ret		 = info->exit.rval;
+
+	if (info->exit.is_error) {
+		eprintf("%s %s (%s)", strerrorname_np(-ret) ? "-1" : "?", strerrorname(-ret), strerrordesc(-ret));
+	} else {
+		eprintf(get_format(prototype->ret.type), ret);
+	}
+
+	eprintf("\n");
+}
+
 void on_signal_delivery_stop(data_t *td, const opt_t *opt, int sig) {
+	siginfo_t siginfo = { 0 };
+	int		  event	  = td->status >> 16;
+
 	// Ignore initial sigstop
 	if (!td->initial_sigstop && sig == SIGSTOP) {
 		td->initial_sigstop = 1;
 
 		return;
 	}
-	
-	td->restart_signal = sig;
-		
-	siginfo_t siginfo = { 0 };
-	int event = td->status >> 16;
-	int ret = 0;
 
-	CHECK_SYSCALL(ret = ptrace(PTRACE_GETSIGINFO, td->pid, NULL, &siginfo));
+	// Set signal to be delived to tracee
+	td->signal = sig;
 
-	if (event == PTRACE_EVENT_STOP) {
-		td->ptrace_op = PTRACE_LISTEN;
-		td->restart_signal = 0;
-		
-		if (!opt->suppress) {
-			eprintf("--- stopped by SIG%s ---\n", sigabbrev_np(siginfo.si_signo));
-		}
+	CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, td->pid, NULL, &siginfo));
 
-		eprintf(" [ Unsetting ] ");
+	switch (event) {
+		case PTRACE_EVENT_STOP:
+			// Result of SIGCONT, for some reason
+			if (siginfo.si_signo == SIGTRAP) {
+				td->op = PTRACE_SYSCALL;
+
+				break;
+			}
+
+			// Don't restart tracee
+			td->op	   = PTRACE_LISTEN;
+			td->signal = 0;
+
+			if (!opt->suppress) {
+				eprintf("--- stopped by SIG%s ---\n", sigabbrev_np(siginfo.si_signo));
+			}
+
+			break;
+		case 0:
+			if (!opt->suppress) {
+				const char *abbr = sigabbrev_np(siginfo.si_signo);
+
+				eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
+
+				if (siginfo.si_code > 0) {
+					eprintf("SI_KERNEL");
+				} else {
+					eprintf("SI_USER, si_pid=%i, si_uid=%i", siginfo.si_pid, siginfo.si_uid);
+				}
+
+				eprintf(" } ---\n");
+			}
+
+			break;
 	}
-
-	if (!opt->suppress) {
-		const char *abbr = sigabbrev_np(siginfo.si_signo);
-
-		eprintf("--- SIG%s { si_signo=SIG%s, si_code=", abbr, abbr);
-
-		if (siginfo.si_code > 0) {
-			eprintf("SI_KERNEL");
-		} else {
-			eprintf("SI_USER, si_pid=%i, si_uid=%i", siginfo.si_pid, siginfo.si_uid);
-		}
-
-		eprintf(" } ---\n");
-	}
-
 }

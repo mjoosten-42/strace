@@ -4,6 +4,7 @@
 #include "arch.h"
 #include "strace.h"
 
+#include <linux/audit.h>
 #include <locale.h>
 #include <stdlib.h>
 #include <time.h>
@@ -21,20 +22,20 @@ void summarize(summary_t *summary) {
 	int archs = 0;
 
 	if (any(summary->count_64, SYSCALL_X86_64_MAX, sizeof(*summary->count_64), was_called)) {
-		summarize_arch(summary->count_64, SYSCALL_X86_64_MAX, ARCH_X86_64);
+		summarize_arch(summary->count_64, SYSCALL_X86_64_MAX, AUDIT_ARCH_X86_64);
 		archs++;
 	}
 
-	if (any(summary->count_32, SYSCALL_X86_MAX, sizeof(*summary->count_32), was_called)) {
+	if (any(summary->count_32, SYSCALL_I386_MAX, sizeof(*summary->count_32), was_called)) {
 		if (archs) {
 			eprintf("System call usage summary for 32 bit mode:\n");
 		}
 
-		summarize_arch(summary->count_32, SYSCALL_X86_MAX, ARCH_I386);
+		summarize_arch(summary->count_32, SYSCALL_I386_MAX, AUDIT_ARCH_I386);
 	}
 }
 
-void summarize_arch(count_t *array, int size, e_arch arch) {
+void summarize_arch(count_t *array, int size, int arch) {
 	qsort(array, size, sizeof(*array), tv_cmp);
 
 	struct timeval total  = { 0 };

@@ -14,12 +14,12 @@ enum e_type {
 	Enum,
 };
 
-typedef struct s_syscall_arg {
+typedef struct {
 	enum e_type type;
 	int			size;
 } t_syscall_arg;
 
-typedef struct s_syscall_prototype {
+typedef struct {
 	char		  name[32];
 	int			  argc;
 	t_syscall_arg ret;

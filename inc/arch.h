@@ -5,21 +5,10 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#define SYSCALL_X86_64_MAX 548
-#define SYSCALL_X86_MAX 466
+#define SYSCALL_X86_64_MAX 549
+#define SYSCALL_I386_MAX 467
 
-#define SYSCALL_MAX MAX(SYSCALL_X86_MAX, SYSCALL_X86_64_MAX)
-
-typedef enum {
-	ARCH_X86_64 = 0,
-	ARCH_I386,
-} e_arch;
-
-typedef struct {
-	e_arch arch;
-	int	   nr;
-	long   ret;
-
+struct registers {
 	union {
 		struct {
 			uint64_t r15;
@@ -69,8 +58,8 @@ typedef struct {
 			int32_t eflags;
 			int32_t esp;
 			int32_t xss;
-		} x86;
+		} i386;
 	};
-} u_regs;
+};
 
 #endif

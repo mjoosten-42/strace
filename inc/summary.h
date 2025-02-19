@@ -15,11 +15,11 @@ typedef struct {
 
 typedef struct {
 	count_t count_64[SYSCALL_X86_64_MAX];
-	count_t count_32[SYSCALL_X86_MAX];
+	count_t count_32[SYSCALL_I386_MAX];
 } summary_t;
 
 void summarize(summary_t *counts);
-void summarize_arch(count_t *array, int size, e_arch arch);
+void summarize_arch(count_t *array, int size, int arch);
 
 void  tv_add(struct timeval *first, struct timeval *second);
 void  tv_sub(struct timeval *first, struct timeval *second);

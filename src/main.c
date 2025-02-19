@@ -5,6 +5,7 @@
 #include "summary.h"
 
 #include <errno.h>
+#include <linux/audit.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +14,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-data_t data = { 0 };
+data_t data = { .arch = AUDIT_ARCH_X86_64 };
 opt_t  opt	= { 0 };
 
 int main(int argc, char **argv) {
@@ -39,7 +40,13 @@ int main(int argc, char **argv) {
 	if (!data.pid) {
 		CHECK_SYSCALL(raise(SIGSTOP));
 		CHECK_SYSCALL(execv(path, argv + optind));
+		exit(EXIT_FAILURE);
 	}
+	
+	// Buffer stderr to reduce write() calls
+	// Syscall-start is flushed manually
+	CHECK_SYSCALL(setvbuf(stderr, NULL, _IOLBF, 0));
+
 
 	struct sigaction sa = { .sa_handler = handler };
 	CHECK_SYSCALL(sigaction(SIGINT, &sa, NULL));
