@@ -16,18 +16,23 @@ static const t_syscall_prototype x86_64[SYSCALL_X86_64_MAX] = {
 const t_syscall_prototype *syscall_get_prototype(int arch, int nr) {
 	const t_syscall_prototype *ret = NULL;
 
-	if (arch & __AUDIT_ARCH_64BIT) {
-		if (nr >= SYSCALL_X86_64_MAX) {
-			return NULL;
-		}
+	switch (arch) {
+		case AUDIT_ARCH_X86_64:
+			if (nr >= SYSCALL_X86_64_MAX) {
+				return NULL;
+			}
 
-		ret = &x86_64[nr];
-	} else {
-		if (nr >= SYSCALL_I386_MAX) {
-			return NULL;
-		}
+			ret = &x86_64[nr];
 
-		ret = &i386[nr];
+			break;
+		case AUDIT_ARCH_I386:
+			if (nr >= SYSCALL_I386_MAX) {
+				return NULL;
+			}
+
+			ret = &i386[nr];
+
+			break;
 	}
 
 	return ret;

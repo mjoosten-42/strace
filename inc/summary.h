@@ -21,9 +21,12 @@ typedef struct {
 void summarize(summary_t *counts);
 void summarize_arch(count_t *array, int size, int arch);
 
+void print_count(count_t *count, count_t *total, int arch);
+
 void  tv_add(struct timeval *first, struct timeval *second);
 void  tv_sub(struct timeval *first, struct timeval *second);
 float tv_div(struct timeval *first, struct timeval *second);
-int	  tv_cmp(const void *p, const void *q);
+
+int cmp(const void *p, const void *q);
 
 #endif

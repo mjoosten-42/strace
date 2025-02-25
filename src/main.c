@@ -17,11 +17,15 @@
 data_t data = { .arch = AUDIT_ARCH_X86_64 };
 opt_t  opt	= { 0 };
 
-int main(int argc, char **argv) {
-	CHECK_SYSCALL(setlocale(LC_ALL, ""));
+int			interrupt = 0;
+const char *program;
+
+int main(int argc, char **argv, char **envp) {
+	EXIT_IF_FAILED(setlocale(LC_ALL, ""));
+
+	program = basename(argv[0]);
 
 	const char *command = opts(argc, argv, &opt);
-	const char *program = basename(argv[0]);
 
 	if (!command) {
 		eprintf("%s: must have PROG [ARGS]\n", program);
@@ -35,23 +39,23 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	CHECK_SYSCALL(data.pid = fork());
+	EXIT_IF_FAILED(data.pid = fork());
 
 	if (!data.pid) {
-		CHECK_SYSCALL(raise(SIGSTOP));
-		CHECK_SYSCALL(execv(path, argv + optind));
+		EXIT_IF_FAILED(raise(SIGSTOP));
+		EXIT_IF_FAILED(execve(path, argv + optind, envp));
 		exit(EXIT_FAILURE);
 	}
-	
+
 	// Buffer stderr to reduce write() calls
 	// Syscall-start is flushed manually
-	CHECK_SYSCALL(setvbuf(stderr, NULL, _IOLBF, 0));
+	EXIT_IF_FAILED(setvbuf(stderr, NULL, _IOLBF, 0));
 
-
+	// Allow printing summary when terminated
 	struct sigaction sa = { .sa_handler = handler };
-	CHECK_SYSCALL(sigaction(SIGINT, &sa, NULL));
-	CHECK_SYSCALL(sigaction(SIGQUIT, &sa, NULL));
-	CHECK_SYSCALL(sigaction(SIGTERM, &sa, NULL));
+	EXIT_IF_FAILED(sigaction(SIGINT, &sa, NULL));
+	EXIT_IF_FAILED(sigaction(SIGQUIT, &sa, NULL));
+	EXIT_IF_FAILED(sigaction(SIGTERM, &sa, NULL));
 
 	return trace(&data, &opt);
 }
@@ -82,5 +86,5 @@ const char *opts(int argc, char **argv, opt_t *opt) {
 }
 
 void handler(int signum) {
-	data.interrupt = signum;
+	interrupt = signum;
 }

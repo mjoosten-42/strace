@@ -2,8 +2,7 @@ NAME = ft_strace
 
 CC = gcc
 
-HFLAGS  = -MMD -MP
-CFLAGS  = -Wall -Wextra -Werror
+CFLAGS  = -Wall -Wextra -Werror -MMD -MP
 LDFLAGS = 
 
 SRC_DIR = src
@@ -35,7 +34,7 @@ $(NAME): $(OBJECTS)
 	$(CC) $(LDFLAGS) $^ -o $@ 
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) $(HFLAGS) $(INCLUDE) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
 $(OBJ_DIR):
 	mkdir -p $@
@@ -61,15 +60,9 @@ print:
 format: files
 	clang-format -i $(SOURCES) $(HEADERS)
 
-scan: clean
-	scan-build make
-
 ctags:
 	ctags $(SOURCES) $(HEADERS)
 
-complete:
-	complete -o default -F _strace ./ft_strace
-
-.PHONY: all test clean fclean re files print format scan ctags complete
+.PHONY: all test clean fclean re files print format ctags 
 
 -include $(OBJECTS:.o=.d)

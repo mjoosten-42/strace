@@ -6,6 +6,7 @@
 #include "summary.h"
 #include "syscall.h"
 
+#include <asm/unistd.h>
 #include <elf.h>
 #include <limits.h>
 #include <linux/audit.h>
@@ -21,21 +22,23 @@
 #include <sys/wait.h>
 
 int trace(data_t *td, const opt_t *opt) {
-	CHECK_SYSCALL(ptrace(PTRACE_SEIZE, td->pid, NULL, PTRACE_O_TRACESYSGOOD));
+	EXIT_IF_FAILED(ptrace(PTRACE_SEIZE, td->pid, NULL, PTRACE_O_TRACESYSGOOD));
 
-	while (!td->interrupt) {
-		CHECK_SYSCALL(wait4(td->pid, &td->status, 0, &td->ru));
+	while (!interrupt) {
+		IF_FAILED(wait4(td->pid, &td->status, 0, &td->ru)) {
+			break;
+		}
 
 		td->op	   = PTRACE_SYSCALL;
 		td->signal = 0;
 
 		// Syscall interrupted
-		if (td->running && !(WIFSTOPPED(td->status) && WSTOPSIG(td->status) & SYSCALL_BIT)) {
+		if (td->in_syscall && !(WIFSTOPPED(td->status) && WSTOPSIG(td->status) & SYSCALL_BIT)) {
 			if (!opt->suppress) {
 				eprintf("?\n");
 			}
 
-			td->running = 0;
+			td->in_syscall = false;
 		}
 
 		// Tracee exited
@@ -62,31 +65,54 @@ int trace(data_t *td, const opt_t *opt) {
 			break;
 		}
 
-		// Tracee received signal
-		if (WIFSTOPPED(td->status) && !(WSTOPSIG(td->status) & SYSCALL_BIT)) {
-			on_signal_delivery_stop(td, opt, WSTOPSIG(td->status));
+		// Inhibit printing when tracee didn't start
+		if (!td->execve_failed) {
+			// Tracee received signal
+			if (WIFSTOPPED(td->status) && !(WSTOPSIG(td->status) & SYSCALL_BIT)) {
+				if (on_signal_delivery_stop(td, opt, WSTOPSIG(td->status))) {
+					break;
+				}
+			}
+
+			// Syscall start-stop
+			if (WIFSTOPPED(td->status) && WSTOPSIG(td->status) & SYSCALL_BIT) {
+				if (on_syscall_start_stop(td, opt)) {
+					break;
+				}
+			}
 		}
 
-		// Syscall start-stop
-		if (WIFSTOPPED(td->status) && WSTOPSIG(td->status) & SYSCALL_BIT) {
-			on_syscall_start_stop(td, opt);
+		// Restart (or just listen to) tracee
+		IF_FAILED(ptrace(td->op, td->pid, NULL, td->signal)) {
+			break;
 		}
+	}
 
-		ptrace(td->op, td->pid, NULL, td->signal);
+	if (!opt->suppress && td->in_syscall) {
+		td->in_syscall = false;
+		eprintf("\n");
 	}
 
 	if (opt->summary) {
 		summarize(&td->summary);
 	}
 
-	return td->status;
+	// Mimic tracee termsig
+	if (WIFSIGNALED(td->status)) {
+		signal(WTERMSIG(td->status), SIG_DFL);
+		raise(WTERMSIG(td->status));
+	}
+
+	return WEXITSTATUS(td->status);
 }
 
-void on_syscall_start_stop(data_t *td, const opt_t *opt) {
+int on_syscall_start_stop(data_t *td, const opt_t *opt) {
 	struct ptrace_syscall_info	s_info = { 0 };
 	struct ptrace_syscall_info *info   = &s_info;
 
-	get_regs(td->pid, &s_info);
+	if (get_regs(td->pid, &s_info)) {
+		return 1;
+	}
 
 	switch (info->op) {
 		case PTRACE_SYSCALL_INFO_ENTRY:
@@ -131,22 +157,26 @@ void on_syscall_start_stop(data_t *td, const opt_t *opt) {
 			break;
 	}
 
-	td->running = !td->running;
+	td->in_syscall = !td->in_syscall;
 
 	if (td->arch != info->arch) {
 		td->arch = info->arch;
 
 		eprintf("[ Process PID=%i runs in %s bit mode. ]\n", td->pid, td->arch == AUDIT_ARCH_X86_64 ? "64" : "32");
 	}
+
+	return 0;
 }
 
-void get_regs(pid_t pid, struct ptrace_syscall_info *info) {
+int get_regs(pid_t pid, struct ptrace_syscall_info *info) {
 	static bool toggle = false;
 
 	struct registers regs = { 0 };
 	struct iovec	 iov  = { &regs.x86_64, sizeof(regs) };
 
-	CHECK_SYSCALL(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov));
+	IF_FAILED(ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov)) {
+		return 1;
+	}
 
 	info->op = !toggle ? PTRACE_SYSCALL_INFO_ENTRY : PTRACE_SYSCALL_INFO_EXIT;
 
@@ -194,7 +224,9 @@ void get_regs(pid_t pid, struct ptrace_syscall_info *info) {
 			}
 
 			break;
-	};
+	}
+
+	return 0;
 }
 
 void on_syscall_start(data_t *td, const struct ptrace_syscall_info *info) {
@@ -214,8 +246,6 @@ void print_syscall(data_t *td, const t_syscall_prototype *prototype, const struc
 	eprintf("%s(", prototype->name);
 
 	if (!td->initial_execve) {
-		td->initial_execve = true;
-
 		return print_initial_execve(info);
 	}
 
@@ -228,8 +258,7 @@ void print_syscall(data_t *td, const t_syscall_prototype *prototype, const struc
 			arg &= ((1L << 32) - 1);
 		}
 
-		// TODO; print 32 bit pointers with correct size
-		if (arg_prot.type == Pointer && arg > (td->arch == AUDIT_ARCH_I386 ? 0x10000 : 0x10000000)) {
+		if (arg_prot.type == Pointer && arg > (td->arch == AUDIT_ARCH_I386 ? 0x100000 : 0x10000000)) {
 			eprintf("%p", (void *)arg);
 		} else {
 			if (arg_prot.type == Pointer && arg == 0) {
@@ -270,7 +299,7 @@ void print_initial_execve(const struct ptrace_syscall_info *info) {
 		envc++;
 	}
 
-	eprintf("], %p /* %i vars */ ) = ", (void *)args[2], envc);
+	eprintf("], %p /* %i vars */", (void *)args[2], envc);
 }
 
 void on_syscall_end(data_t *td, const struct ptrace_syscall_info *info) {
@@ -283,10 +312,18 @@ void on_syscall_end(data_t *td, const struct ptrace_syscall_info *info) {
 		eprintf(get_format(prototype->ret.type), ret);
 	}
 
+	if (td->syscall == __NR_execve && !td->initial_execve) {
+		td->initial_execve = true;
+
+		if (info->exit.is_error) {
+			td->execve_failed = true;
+		}
+	}
+
 	eprintf("\n");
 }
 
-void on_signal_delivery_stop(data_t *td, const opt_t *opt, int sig) {
+int on_signal_delivery_stop(data_t *td, const opt_t *opt, int sig) {
 	siginfo_t siginfo = { 0 };
 	int		  event	  = td->status >> 16;
 
@@ -294,13 +331,15 @@ void on_signal_delivery_stop(data_t *td, const opt_t *opt, int sig) {
 	if (!td->initial_sigstop && sig == SIGSTOP) {
 		td->initial_sigstop = 1;
 
-		return;
+		return 0;
 	}
 
 	// Set signal to be delived to tracee
 	td->signal = sig;
 
-	CHECK_SYSCALL(ptrace(PTRACE_GETSIGINFO, td->pid, NULL, &siginfo));
+	IF_FAILED(ptrace(PTRACE_GETSIGINFO, td->pid, NULL, &siginfo)) {
+		return 1;
+	}
 
 	switch (event) {
 		case PTRACE_EVENT_STOP:
@@ -337,4 +376,6 @@ void on_signal_delivery_stop(data_t *td, const opt_t *opt, int sig) {
 
 			break;
 	}
+
+	return 0;
 }

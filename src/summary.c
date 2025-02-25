@@ -14,9 +14,12 @@
 // clang-format off
 #define HEADER "% time     seconds  usecs/call     calls    errors syscall"
 #define LINE   "------ ----------- ----------- --------- --------- ----------------"
+
 // clang-format on
 
-int was_called(void *p);
+int was_called(void *p) {
+	return ((count_t *)p)->calls;
+}
 
 void summarize(summary_t *summary) {
 	int archs = 0;
@@ -36,16 +39,19 @@ void summarize(summary_t *summary) {
 }
 
 void summarize_arch(count_t *array, int size, int arch) {
-	qsort(array, size, sizeof(*array), tv_cmp);
+	count_t total  = { 0 };
+	int		called = 0;
 
-	struct timeval total  = { 0 };
-	int			   called = 0;
+	qsort(array, size, sizeof(*array), cmp);
 
 	for (int i = 0; i < size; i++) {
 		count_t count = array[i];
 
+		tv_add(&total.time, &count.time);
+		total.calls += count.calls;
+		total.errors += count.errors;
+
 		if (count.calls) {
-			tv_add(&total, &count.time);
 			called++;
 		}
 	}
@@ -53,37 +59,31 @@ void summarize_arch(count_t *array, int size, int arch) {
 	eprintf("%s\n", HEADER);
 	eprintf("%s\n", LINE);
 
-	for (int i = 0; i < size; i++) {
-		count_t count = array[i];
-
-		if (!count.calls) {
-			continue;
-		}
-
-		const t_syscall_prototype *prototype = syscall_get_prototype(arch, count.nr);
-		struct timeval			   *time		 = &count.time;
-
-		eprintf("%6.2f ", tv_div(time, &total) * 100.0f);
-		eprintf("%11.6f ", (float)time->tv_sec + (float)time->tv_usec / (float)USECS);
-		eprintf("%11lu ", (time->tv_sec * USECS + time->tv_usec) / count.calls);
-		eprintf("%9i ", count.calls);
-
-		if (count.errors) {
-			eprintf("%9i ", count.errors);
-		} else {
-			eprintf("%9c ", ' ');
-		}
-
-		eprintf("%s", prototype->name);
-		eprintf("\n");
+	for (int i = 0; i < called; i++) {
+		print_count(&array[i], &total, arch);
 	}
 
 	eprintf("%s\n", LINE);
-	eprintf("%.2f\n", 100.0f);
+	print_count(&total, &total, 0);
 }
 
-int was_called(void *p) {
-	return ((count_t *)p)->calls;
+void print_count(count_t *count, count_t *total, int arch) {
+	const t_syscall_prototype *prototype = syscall_get_prototype(arch, count->nr);
+	struct timeval			   *time		 = &count->time;
+
+	eprintf("%6.2f ", tv_div(time, &total->time) * 100.0f);
+	eprintf("%11.6f ", (float)time->tv_sec + (float)time->tv_usec / (float)USECS);
+	eprintf("%11lu ", (time->tv_sec * USECS + time->tv_usec) / count->calls);
+	eprintf("%9i ", count->calls);
+
+	if (count->errors) {
+		eprintf("%9i ", count->errors);
+	} else {
+		eprintf("%9c ", ' ');
+	}
+
+	eprintf("%s", prototype ? prototype->name : "total");
+	eprintf("\n");
 }
 
 void tv_add(struct timeval *first, struct timeval *second) {
@@ -119,17 +119,30 @@ float tv_div(struct timeval *first, struct timeval *second) {
 	float f = (float)(first->tv_sec * USECS + first->tv_usec);
 	float g = (float)(second->tv_sec * USECS + second->tv_usec);
 
-	return f ? f / g : f;
+	return f && g ? f / g : f;
 }
 
-int tv_cmp(const void *p, const void *q) {
-	struct timeval *f	= &((count_t *)p)->time;
-	struct timeval *g	= &((count_t *)q)->time;
-	int				ret = f->tv_sec - g->tv_sec;
+int cmp(const void *p, const void *q) {
+	const count_t *f = p;
+	const count_t *g = q;
+
+	int ret = g->time.tv_sec - f->time.tv_sec;
 
 	if (!ret) {
-		ret = f->tv_usec - g->tv_usec;
+		ret = g->time.tv_usec - f->time.tv_usec;
 	}
 
-	return -ret;
+	if (!ret) {
+		ret = g->calls - f->calls;
+	}
+
+	if (!ret) {
+		ret = g->errors - f->errors;
+	}
+
+	if (!ret) {
+		ret = g->nr - f->nr;
+	}
+
+	return ret;
 }

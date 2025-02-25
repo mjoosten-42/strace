@@ -5,7 +5,7 @@
 
 #define MB (1024 * 1024UL)
 #define AMOUNT (128 * MB)
-#define LOOPS 16
+#define LOOPS 8
 
 size_t sum(int fd, char *buf, size_t bufsize);
 
@@ -18,10 +18,8 @@ int main() {
 		exit(1);
 	}
 
-	printf("0\r");
-
 	for (size_t i = 0; i < LOOPS; i++) {
-		printf("\r%lu",	sum(fd, buf, AMOUNT));
+		printf("%lu\n",	sum(fd, buf, AMOUNT));
 	}
 
 	printf("\n");
