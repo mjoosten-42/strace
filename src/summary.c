@@ -40,7 +40,6 @@ void summarize(summary_t *summary) {
 
 void summarize_arch(count_t *array, int size, int arch) {
 	count_t total  = { 0 };
-	int		called = 0;
 
 	qsort(array, size, sizeof(*array), cmp);
 
@@ -50,17 +49,17 @@ void summarize_arch(count_t *array, int size, int arch) {
 		tv_add(&total.time, &count.time);
 		total.calls += count.calls;
 		total.errors += count.errors;
-
-		if (count.calls) {
-			called++;
-		}
 	}
 
 	eprintf("%s\n", HEADER);
 	eprintf("%s\n", LINE);
 
-	for (int i = 0; i < called; i++) {
-		print_count(&array[i], &total, arch);
+	for (int i = 0; i < size; i++) {
+		count_t count = array[i];
+
+		if (count.calls) {
+			print_count(&count, &total, arch);
+		}
 	}
 
 	eprintf("%s\n", LINE);
@@ -119,7 +118,7 @@ float tv_div(struct timeval *first, struct timeval *second) {
 	float f = (float)(first->tv_sec * USECS + first->tv_usec);
 	float g = (float)(second->tv_sec * USECS + second->tv_usec);
 
-	return f && g ? f / g : f;
+	return g ? f / g : f;
 }
 
 int cmp(const void *p, const void *q) {
@@ -130,18 +129,6 @@ int cmp(const void *p, const void *q) {
 
 	if (!ret) {
 		ret = g->time.tv_usec - f->time.tv_usec;
-	}
-
-	if (!ret) {
-		ret = g->calls - f->calls;
-	}
-
-	if (!ret) {
-		ret = g->errors - f->errors;
-	}
-
-	if (!ret) {
-		ret = g->nr - f->nr;
 	}
 
 	return ret;
