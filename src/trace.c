@@ -88,7 +88,7 @@ int trace(data_t *td, const opt_t *opt) {
 		}
 	}
 
-	if (!opt->suppress && td->in_syscall) {
+	if (!opt->suppress && (td->in_syscall || interrupt)) {
 		td->in_syscall = false;
 		eprintf("\n");
 	}
